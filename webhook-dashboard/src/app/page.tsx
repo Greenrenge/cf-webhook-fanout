@@ -343,7 +343,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 text-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="https://example.com/webhook"
             />
           </div>
@@ -354,7 +354,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
             <textarea
               value={headers}
               onChange={(e) => setHeaders(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 text-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
               placeholder='{"Authorization": "Bearer token"}'
             />
@@ -469,7 +469,7 @@ function ReplayModal({ isOpen, onClose, api }: {
                 value={webhookId}
                 onChange={(e) => setWebhookId(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 text-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter webhook ID"
               />
             </div>
@@ -484,7 +484,7 @@ function ReplayModal({ isOpen, onClose, api }: {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 text-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -496,7 +496,7 @@ function ReplayModal({ isOpen, onClose, api }: {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 text-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </>

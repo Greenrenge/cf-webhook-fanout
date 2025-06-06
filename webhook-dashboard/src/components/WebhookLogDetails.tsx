@@ -60,7 +60,7 @@ export function WebhookLogDetails({ log }: Props) {
               {/* Headers */}
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Headers:</h4>
-                <pre className="bg-gray-100 text-grey-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
+                <pre className="bg-gray-100 text-gray-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
                   {prettyPrintJSON(headers) as string}
                 </pre>
               </div>
@@ -69,7 +69,7 @@ export function WebhookLogDetails({ log }: Props) {
               {body && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Request Body:</h4>
-                  <pre className="bg-gray-100 text-grey-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
+                  <pre className="bg-gray-100 text-gray-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
                     {prettyPrintJSON(body) as string}
                   </pre>
                 </div>
@@ -86,7 +86,7 @@ export function WebhookLogDetails({ log }: Props) {
                       </span>
                     )}
                   </div>
-                  <pre className="bg-gray-100 text-grey-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
+                  <pre className="bg-gray-100 text-gray-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
                     {prettyPrintJSON(responseBody) as string}
                   </pre>
                 </div>
