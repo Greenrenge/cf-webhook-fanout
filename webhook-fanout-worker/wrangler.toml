@@ -1,0 +1,23 @@
+name = "webhook-fanout-worker"
+main = "src/index.ts"
+compatibility_date = "2025-06-06"
+compatibility_flags = ["global_fetch_strictly_public"]
+
+# Database configuration
+[[d1_databases]]
+binding = "DB"
+database_name = "webhook-fanout-db"
+database_id = "ae65d5ff-30cf-4b63-8917-e0c942f7020f"
+migrations_dir = "drizzle"
+
+# Environment variables
+[vars]
+WEBHOOK_PATH = "/webhook"
+
+# Assets configuration
+[assets]
+directory = "./public"
+
+# Observability
+[observability]
+enabled = true
