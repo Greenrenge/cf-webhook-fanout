@@ -7,15 +7,28 @@ export class WebhookAPI {
 
   constructor() {
     this.baseUrl = WORKER_API_URL;
+    console.log('WebhookAPI initialized with baseUrl:', this.baseUrl);
   }
 
   async getEndpoints(): Promise<Endpoint[]> {
-    const response = await fetch(`${this.baseUrl}/config/endpoints`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch endpoints');
+    try {
+      console.log('Fetching endpoints from:', `${this.baseUrl}/config/endpoints`);
+      const response = await fetch(`${this.baseUrl}/config/endpoints`);
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to fetch endpoints: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Endpoints data:', data);
+      return data.endpoints;
+    } catch (error) {
+      console.error('Error fetching endpoints:', error);
+      throw error;
     }
-    const data = await response.json();
-    return data.endpoints;
   }
 
   async createEndpoint(endpoint: Omit<Endpoint, 'id' | 'createdAt' | 'updatedAt'>): Promise<Endpoint> {

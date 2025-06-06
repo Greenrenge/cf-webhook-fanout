@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Endpoint, WebhookLog } from '@/types/webhook';
 import { WebhookAPI } from '@/lib/api';
+import { WebhookLogDetails } from '@/components/WebhookLogDetails';
 
 export default function Dashboard() {
   // For now, we'll simulate a logged-in user until we fix NextAuth
@@ -254,32 +255,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {webhookLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                          {log.id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            log.direction === 'incoming'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {log.direction}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {log.endpointUrl || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {log.method}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {log.statusCode || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </td>
-                      </tr>
+                      <WebhookLogDetails key={log.id} log={log} />
                     ))}
                   </tbody>
                 </table>
@@ -594,29 +570,7 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs }: {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    {log.id}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      log.direction === 'incoming'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {log.direction}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {log.method}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {log.statusCode || '-'}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </td>
-                </tr>
+                <WebhookLogDetails key={log.id} log={log} />
               ))}
             </tbody>
           </table>
