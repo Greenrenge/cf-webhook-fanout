@@ -59,11 +59,8 @@ export function WebhookLogDetails({ log, onReplay }: Props) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                console.log('Replaying webhook:', log.webhookId);
                 if (onReplay && log.webhookId) {
                   onReplay(log.webhookId);
-                } else {
-                  console.log('Missing onReplay or webhookId');
                 }
               }}
               className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
