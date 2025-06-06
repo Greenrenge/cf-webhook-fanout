@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [showEndpointLogs, setShowEndpointLogs] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [endpointLogs, setEndpointLogs] = useState<WebhookLog[]>([]);
+  const [replayingWebhooks, setReplayingWebhooks] = useState<Set<string>>(new Set());
 
   const api = useMemo(() => new WebhookAPI(), []);
 
@@ -76,12 +77,19 @@ export default function Dashboard() {
 
   const handleReplayWebhook = async (webhookId: string, endpointId?: number) => {
     try {
+      setReplayingWebhooks(prev => new Set(prev).add(webhookId));
       await api.replayWebhookById(webhookId, endpointId);
       alert(`Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`);
       await loadData(); // Refresh logs to show replay
     } catch (error) {
       console.error('Failed to replay webhook:', error);
       alert('Failed to replay webhook');
+    } finally {
+      setReplayingWebhooks(prev => {
+        const next = new Set(prev);
+        next.delete(webhookId);
+        return next;
+      });
     }
   };
 
@@ -291,6 +299,7 @@ export default function Dashboard() {
                         log={log} 
                         onReplay={handleReplayWebhook}
                         endpoints={endpoints}
+                        isReplaying={log.webhookId ? replayingWebhooks.has(log.webhookId) : false}
                       />
                     ))}
                   </tbody>
@@ -328,6 +337,7 @@ export default function Dashboard() {
         logs={endpointLogs}
         onReplay={handleReplayWebhook}
         endpoints={endpoints}
+        replayingWebhooks={replayingWebhooks}
       />
     </div>
   );
@@ -587,13 +597,14 @@ function ReplayModal({ isOpen, onClose, api, endpoints }: {
 }
 
 // Endpoint Logs Modal Component
-function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoints }: {
+function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoints, replayingWebhooks }: {
   isOpen: boolean;
   onClose: () => void;
   endpoint: Endpoint | null;
   logs: WebhookLog[];
   onReplay: (webhookId: string, endpointId?: number) => void;
   endpoints: Endpoint[];
+  replayingWebhooks: Set<string>;
 }) {
   if (!isOpen || !endpoint) return null;
 
@@ -646,6 +657,7 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
                   log={log} 
                   onReplay={onReplay}
                   endpoints={endpoints}
+                  isReplaying={log.webhookId ? replayingWebhooks.has(log.webhookId) : false}
                 />
               ))}
             </tbody>
