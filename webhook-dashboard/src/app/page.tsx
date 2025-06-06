@@ -331,11 +331,143 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Incoming Webhooks Section */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-medium text-blue-800">Incoming Webhook Logs</h2>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleClearIncomingWebhooks}
+                      disabled={clearingWebhooks}
+                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {clearingWebhooks ? 'Clearing...' : 'Clear Webhooks'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
+                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Direction
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Method
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Source IP
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User Agent
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {incomingWebhooks.map((webhook) => (
+                      <tr key={webhook.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {webhook.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800` }>
+                                      incoming
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {webhook.method}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {webhook.sourceIp}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
+                          {webhook.userAgent}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            webhook.processingStatus === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : webhook.processingStatus === 'failed'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {webhook.processingStatus}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatBangkokDate(webhook.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplayWebhook(webhook.id);
+                            }}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Replay
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIncomingWebhook(webhook);
+                              setShowIncomingWebhookDetails(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Pagination Controls */}
+              <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  Page {incomingWebhooksPage + 1} • Showing {incomingWebhooks.length} items
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleIncomingWebhooksPageChange(incomingWebhooksPage - 1)}
+                    disabled={incomingWebhooksPage === 0}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handleIncomingWebhooksPageChange(incomingWebhooksPage + 1)}
+                    disabled={incomingWebhooks.length < ITEMS_PER_PAGE}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+
+
+
             {/* Webhook Logs Section */}
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Webhook Logs</h2>
+                  <h2 className="text-lg font-medium text-green-800">Outgoing Webhook Logs</h2>
                   <div className="flex space-x-3">
                     <button
                       onClick={handleClearWebhookLogs}
@@ -418,127 +550,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Incoming Webhooks Section */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Incoming Webhook Logs</h2>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={handleClearIncomingWebhooks}
-                      disabled={clearingWebhooks}
-                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
-                    >
-                      {clearingWebhooks ? 'Clearing...' : 'Clear Webhooks'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Method
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Source IP
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        User Agent
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Time
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {incomingWebhooks.map((webhook) => (
-                      <tr key={webhook.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {webhook.id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {webhook.method}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {webhook.sourceIp}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
-                          {webhook.userAgent}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            webhook.processingStatus === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : webhook.processingStatus === 'failed'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {webhook.processingStatus}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatBangkokDate(webhook.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleReplayWebhook(webhook.id);
-                            }}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Replay
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedIncomingWebhook(webhook);
-                              setShowIncomingWebhookDetails(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {/* Pagination Controls */}
-              <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
-                <div className="text-sm text-gray-500">
-                  Page {incomingWebhooksPage + 1} • Showing {incomingWebhooks.length} items
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleIncomingWebhooksPageChange(incomingWebhooksPage - 1)}
-                    disabled={incomingWebhooksPage === 0}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => handleIncomingWebhooksPageChange(incomingWebhooksPage + 1)}
-                    disabled={incomingWebhooks.length < ITEMS_PER_PAGE}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>
