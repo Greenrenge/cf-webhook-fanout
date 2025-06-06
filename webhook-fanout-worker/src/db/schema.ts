@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
 // Endpoints table - stores webhook endpoints configuration
@@ -30,9 +29,9 @@ export const webhookLogs = sqliteTable('webhook_logs', {
 	responseBody: text('response_body'),
 	responseTime: integer('response_time'), // milliseconds
 	tenantId: text('tenant_id'),
-	createdAt: text('created_at')
+	createdAt: integer('created_at')
 		.notNull()
-		.default(sql`(datetime('now'))`),
+		.$defaultFn(() => Date.now()),
 });
 
 // Incoming webhooks table - stores received webhook metadata
@@ -47,9 +46,9 @@ export const incomingWebhooks = sqliteTable('incoming_webhooks', {
 	processingStatus: text('processing_status').notNull().default('pending'), // 'pending' | 'completed' | 'failed'
 	responseStatus: integer('response_status'), // HTTP status code
 	responseBody: text('response_body'),
-	createdAt: text('created_at')
+	createdAt: integer('created_at')
 		.notNull()
-		.default(sql`(datetime('now'))`),
+		.$defaultFn(() => Date.now()),
 });
 
 export type Endpoint = typeof endpoints.$inferSelect;
