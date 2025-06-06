@@ -20,7 +20,7 @@ app.use(
 		origin: '*',
 		allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 		allowHeaders: ['Content-Type', 'Authorization'],
-	})
+	}),
 );
 
 // Health check
@@ -311,7 +311,7 @@ app.post('/replay/:webhookId', async (c) => {
 			originalWebhook.method,
 			headers,
 			originalWebhook.body || '',
-			activeEndpoints
+			activeEndpoints,
 		);
 
 		// Update processing status based on results

@@ -419,18 +419,6 @@ export default function Dashboard() {
                   <h2 className="text-lg font-medium text-gray-900">Incoming Webhook Logs</h2>
                   <div className="flex space-x-3">
                     <button
-                      onClick={() => setShowReplay(true)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors"
-                    >
-                      Replay Webhooks
-                    </button>
-                    <button
-                      onClick={() => setShowAddEndpoint(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
-                    >
-                      Add Endpoint
-                    </button>
-                    <button
                       onClick={handleClearIncomingWebhooks}
                       disabled={clearingWebhooks}
                       className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
