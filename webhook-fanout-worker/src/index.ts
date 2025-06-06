@@ -166,6 +166,7 @@ app.get('/logs', async (c) => {
 	try {
 		const db = createDB(c.env.DB);
 		const limit = parseInt(c.req.query('limit') || '100');
+		const skip = parseInt(c.req.query('skip') || '0');
 		const endpointUrl = c.req.query('endpoint');
 		const endpointId = c.req.query('endpointId');
 
@@ -192,9 +193,10 @@ app.get('/logs', async (c) => {
 				.from(webhookLogs)
 				.where(and(...whereConditions))
 				.orderBy(desc(webhookLogs.createdAt))
-				.limit(limit);
+				.limit(limit)
+				.offset(skip);
 		} else {
-			logs = await db.select().from(webhookLogs).orderBy(desc(webhookLogs.createdAt)).limit(limit);
+			logs = await db.select().from(webhookLogs).orderBy(desc(webhookLogs.createdAt)).limit(limit).offset(skip);
 		}
 
 		return c.json({ logs });
@@ -290,14 +292,31 @@ app.post('/replay/:webhookId', async (c) => {
 		// Update processing status based on results
 		const primaryResult = results.find((r) => r.isPrimary);
 		let processingStatus = 'completed';
+		let responseStatus: number | undefined;
+		let responseBody: string | undefined;
 
 		if (primaryResult) {
 			processingStatus = primaryResult.success ? 'completed' : 'failed';
+			responseStatus = primaryResult.statusCode;
+			responseBody = primaryResult.responseBody;
 		} else {
 			processingStatus = results.some((r) => r.success) ? 'completed' : 'failed';
+			// Use first successful result for response data if no primary
+			const firstSuccess = results.find((r) => r.success);
+			if (firstSuccess) {
+				responseStatus = firstSuccess.statusCode;
+				responseBody = firstSuccess.responseBody;
+			}
 		}
 
-		await db.update(incomingWebhooks).set({ processingStatus }).where(eq(incomingWebhooks.id, replayWebhookId));
+		await db
+			.update(incomingWebhooks)
+			.set({
+				processingStatus,
+				responseStatus,
+				responseBody,
+			})
+			.where(eq(incomingWebhooks.id, replayWebhookId));
 
 		return c.json({
 			message: `Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`,
@@ -384,14 +403,31 @@ app.post('/replay', async (c) => {
 				// Update processing status based on results
 				const primaryResult = results.find((r) => r.isPrimary);
 				let processingStatus = 'completed';
+				let responseStatus: number | undefined;
+				let responseBody: string | undefined;
 
 				if (primaryResult) {
 					processingStatus = primaryResult.success ? 'completed' : 'failed';
+					responseStatus = primaryResult.statusCode;
+					responseBody = primaryResult.responseBody;
 				} else {
 					processingStatus = results.some((r) => r.success) ? 'completed' : 'failed';
+					// Use first successful result for response data if no primary
+					const firstSuccess = results.find((r) => r.success);
+					if (firstSuccess) {
+						responseStatus = firstSuccess.statusCode;
+						responseBody = firstSuccess.responseBody;
+					}
 				}
 
-				await db.update(incomingWebhooks).set({ processingStatus }).where(eq(incomingWebhooks.id, replayWebhookId));
+				await db
+					.update(incomingWebhooks)
+					.set({
+						processingStatus,
+						responseStatus,
+						responseBody,
+					})
+					.where(eq(incomingWebhooks.id, replayWebhookId));
 
 				replayResults.push({
 					originalWebhookId: webhook.id,
@@ -475,16 +511,33 @@ async function handleWebhook(c: any) {
 		// Determine processing status based on primary endpoint result
 		const primaryResult = results.find((r) => r.isPrimary);
 		let processingStatus = 'completed';
+		let responseStatus: number | undefined;
+		let responseBody: string | undefined;
 
 		if (primaryResult) {
 			processingStatus = primaryResult.success ? 'completed' : 'failed';
+			responseStatus = primaryResult.statusCode;
+			responseBody = primaryResult.responseBody;
 		} else {
 			// No primary endpoint, check if any endpoint succeeded
 			processingStatus = results.some((r) => r.success) ? 'completed' : 'failed';
+			// Use first successful result for response data if no primary
+			const firstSuccess = results.find((r) => r.success);
+			if (firstSuccess) {
+				responseStatus = firstSuccess.statusCode;
+				responseBody = firstSuccess.responseBody;
+			}
 		}
 
-		// Update processing status
-		await db.update(incomingWebhooks).set({ processingStatus }).where(eq(incomingWebhooks.id, webhookId));
+		// Update processing status and response data
+		await db
+			.update(incomingWebhooks)
+			.set({
+				processingStatus,
+				responseStatus,
+				responseBody,
+			})
+			.where(eq(incomingWebhooks.id, webhookId));
 
 		// Return primary endpoint response or fallback
 		if (primaryResult && primaryResult.success) {
