@@ -18,6 +18,9 @@ export default function Dashboard() {
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [endpointLogs, setEndpointLogs] = useState<WebhookLog[]>([]);
   const [replayingWebhooks, setReplayingWebhooks] = useState<Set<string>>(new Set());
+  const [replayingIncomingWebhooks, setReplayingIncomingWebhooks] = useState<Set<string>>(new Set());
+  const [selectedIncomingWebhook, setSelectedIncomingWebhook] = useState<IncomingWebhook | null>(null);
+  const [showIncomingWebhookDetails, setShowIncomingWebhookDetails] = useState(false);
   
   // Pagination state
   const [webhookLogsPage, setWebhookLogsPage] = useState(0);
@@ -27,6 +30,9 @@ export default function Dashboard() {
   const ITEMS_PER_PAGE = 30;
 
   const api = useMemo(() => new WebhookAPI(), []);
+  const handleReplayIncomingWebhook = useCallback((webhookId: string) => {
+    setReplayingIncomingWebhooks(prev => new Set(prev).add(webhookId));
+  }, []);
 
   const loadWebhookLogs = useCallback(async (page = 0) => {
     try {
@@ -497,7 +503,8 @@ export default function Dashboard() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // TODO: implement view details
+                              setSelectedIncomingWebhook(webhook);
+                              setShowIncomingWebhookDetails(true);
                             }}
                             className="text-blue-600 hover:text-blue-900"
                           >
@@ -565,6 +572,20 @@ export default function Dashboard() {
         endpoints={endpoints}
         replayingWebhooks={replayingWebhooks}
       />
+
+      {/* Incoming Webhook Details Modal */}
+      {selectedIncomingWebhook && (
+        <IncomingWebhookDetailsModal
+          isOpen={showIncomingWebhookDetails}
+          onClose={() => setShowIncomingWebhookDetails(false)}
+          webhook={selectedIncomingWebhook}
+          onReplay={(webhookId) => {
+            handleReplayIncomingWebhook(webhookId);
+            handleReplayWebhook(webhookId)
+          }}
+          isReplaying={replayingIncomingWebhooks.has(selectedIncomingWebhook.id)}
+        />
+      )}
     </div>
   );
 }
@@ -894,6 +915,100 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Incoming Webhook Details Modal Component
+function IncomingWebhookDetailsModal({ isOpen, onClose, webhook, onReplay, isReplaying }: {
+  isOpen: boolean;
+  onClose: () => void;
+  webhook: IncomingWebhook;
+  onReplay: (webhookId: string, endpointId?: number) => void;
+  isReplaying: boolean;
+}) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            Incoming Webhook Details
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ID
+            </label>
+            <div className="text-gray-900">
+              {webhook.id}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Method
+            </label>
+            <div className="text-gray-900">
+              {webhook.method}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Source IP
+            </label>
+            <div className="text-gray-900">
+              {webhook.sourceIp}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              User Agent
+            </label>
+            <div className="text-gray-900">
+              {webhook.userAgent}
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+              webhook.processingStatus === 'completed'
+                ? 'bg-green-100 text-green-800'
+                : webhook.processingStatus === 'failed'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {webhook.processingStatus}
+            </span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Time
+            </label>
+            <div className="text-gray-900">
+              {formatBangkokDate(webhook.createdAt)}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <button
+            onClick={() => onReplay(webhook.id)}
+            disabled={isReplaying}
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            {isReplaying ? 'Replaying...' : 'Replay Webhook'}
+          </button>
         </div>
       </div>
     </div>
