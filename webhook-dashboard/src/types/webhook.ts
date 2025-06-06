@@ -33,5 +33,7 @@ export interface IncomingWebhook {
   sourceIp: string;
   userAgent: string;
   processingStatus: 'pending' | 'completed' | 'failed';
+  responseStatus?: number;
+  responseBody?: string;
   createdAt: number;
 }

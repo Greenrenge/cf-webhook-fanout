@@ -391,7 +391,7 @@ export default function Dashboard() {
               {/* Pagination Controls */}
               <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
                 <div className="text-sm text-gray-500">
-                  Page {webhookLogsPage + 1} of {Math.ceil(webhookLogs.length / ITEMS_PER_PAGE)}
+                  Page {webhookLogsPage + 1} • Showing {webhookLogs.length} items
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -524,7 +524,7 @@ export default function Dashboard() {
               {/* Pagination Controls */}
               <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
                 <div className="text-sm text-gray-500">
-                  Page {incomingWebhooksPage + 1} of {Math.ceil(incomingWebhooks.length / ITEMS_PER_PAGE)}
+                  Page {incomingWebhooksPage + 1} • Showing {incomingWebhooks.length} items
                 </div>
                 <div className="flex space-x-2">
                   <button
