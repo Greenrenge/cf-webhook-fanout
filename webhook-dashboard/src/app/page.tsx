@@ -77,7 +77,7 @@ export default function Dashboard() {
 
   const handleReplayWebhook = async (webhookId: string, endpointId?: number) => {
     try {
-      setReplayingWebhooks(prev => new Set(prev).add(webhookId));
+      setReplayingWebhooks(prev => new Set(prev).add(`${webhookId}_${endpointId || 'all'}`));
       await api.replayWebhookById(webhookId, endpointId);
       alert(`Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`);
       await loadData(); // Refresh logs to show replay
@@ -87,7 +87,7 @@ export default function Dashboard() {
     } finally {
       setReplayingWebhooks(prev => {
         const next = new Set(prev);
-        next.delete(webhookId);
+        next.delete(`${webhookId}_${endpointId || 'all'}`);
         return next;
       });
     }
@@ -292,14 +292,16 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {/* ON PAGE */}
-                    {webhookLogs.map((log) => (
+                    { webhookLogs.map((log) => (
                       <WebhookLogDetails 
                         showUrl
                         key={log.id} 
                         log={log} 
                         onReplay={handleReplayWebhook}
                         endpoints={endpoints}
-                        isReplaying={log.webhookId ? replayingWebhooks.has(log.webhookId) : false}
+                        isReplaying={log.webhookId ? replayingWebhooks.has(`${log.webhookId}_${endpoints.find(ep=>
+                          ep.url === log.endpointUrl)?.id || 'all'}`
+                        ) : false}
                       />
                     ))}
                   </tbody>
@@ -657,7 +659,7 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
                   log={log} 
                   onReplay={onReplay}
                   endpoints={endpoints}
-                  isReplaying={log.webhookId ? replayingWebhooks.has(log.webhookId) : false}
+                  isReplaying={log.webhookId ? replayingWebhooks.has(`${log.webhookId}_${endpoints.find(ep => ep.url === log.endpointUrl)?.id || 'all'}`) : false}
                 />
               ))}
             </tbody>

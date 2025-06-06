@@ -82,7 +82,7 @@ export function WebhookLogDetails({ log, onReplay, showUrl, endpoints = [], isRe
               onClick={(e) => {
                 e.stopPropagation();
                 if (onReplay && log.webhookId) {
-                  onReplay(log.webhookId, showUrl ? undefined : endpoints.find(ep=> ep.url === log.endpointUrl)?.id);
+                  onReplay(log.webhookId,endpoints.find(ep=> ep.url === log.endpointUrl)?.id);
                 }
               }}
               disabled={isReplaying}
