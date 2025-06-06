@@ -16,7 +16,6 @@ export default function Dashboard() {
   const [showEndpointLogs, setShowEndpointLogs] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [endpointLogs, setEndpointLogs] = useState<WebhookLog[]>([]);
-  const [selectedWebhookIds, setSelectedWebhookIds] = useState<Set<string>>(new Set());
 
   const api = useMemo(() => new WebhookAPI(), []);
 
@@ -86,59 +85,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleSelectWebhook = (webhookId: string, isSelected: boolean) => {
-    setSelectedWebhookIds(prev => {
-      const newSet = new Set(prev);
-      if (isSelected) {
-        newSet.add(webhookId);
-      } else {
-        newSet.delete(webhookId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAllWebhooks = (isSelected: boolean) => {
-    if (isSelected) {
-      const incomingWebhookIds = new Set(
-        webhookLogs
-          .filter(log => log.direction === 'incoming')
-          .map(log => log.webhookId)
-      );
-      setSelectedWebhookIds(incomingWebhookIds);
-    } else {
-      setSelectedWebhookIds(new Set());
-    }
-  };
-
-  const handleReplaySelected = async (endpointId?: number) => {
-    if (selectedWebhookIds.size === 0) {
-      alert('Please select webhooks to replay');
-      return;
-    }
-
-    const confirmMessage = `Replay ${selectedWebhookIds.size} webhook(s)${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}?`;
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const webhookId of selectedWebhookIds) {
-      try {
-        await api.replayWebhookById(webhookId, endpointId);
-        successCount++;
-      } catch (error) {
-        console.error(`Failed to replay webhook ${webhookId}:`, error);
-        errorCount++;
-      }
-    }
-
-    alert(`Replay completed: ${successCount} successful, ${errorCount} failed`);
-    setSelectedWebhookIds(new Set());
-    await loadData(); // Refresh logs
-  };
 
   // Temporarily removing authentication check
   // if (status === 'loading') {
@@ -219,6 +165,9 @@ export default function Dashboard() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         URL
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -242,6 +191,9 @@ export default function Dashboard() {
                         onClick={() => handleEndpointClick(endpoint)}
                         className="hover:bg-gray-50 cursor-pointer"
                       >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {endpoint.id}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {endpoint.url}
                         </td>
@@ -298,49 +250,12 @@ export default function Dashboard() {
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-medium text-gray-900">Webhook Logs</h2>
-                  <div className="flex gap-2">
-                    {selectedWebhookIds.size > 0 && (
-                      <>
-                        <button
-                          onClick={() => handleReplaySelected()}
-                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                        >
-                          Replay Selected ({selectedWebhookIds.size})
-                        </button>
-                        <div className="relative">
-                          <select
-                            onChange={(e) => {
-                              const endpointId = e.target.value ? parseInt(e.target.value) : undefined;
-                              handleReplaySelected(endpointId);
-                            }}
-                            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                            defaultValue=""
-                          >
-                            <option value="" disabled>Replay to Endpoint...</option>
-                            {endpoints.map(endpoint => (
-                              <option key={endpoint.id} value={endpoint.id}>
-                                {endpoint.url} {endpoint.isPrimary ? '(Primary)' : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <input
-                          type="checkbox"
-                          checked={selectedWebhookIds.size > 0 && selectedWebhookIds.size === webhookLogs.filter(log => log.direction === 'incoming').length}
-                          onChange={(e) => handleSelectAllWebhooks(e.target.checked)}
-                          className="rounded"
-                        />
-                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         ID
                       </th>
@@ -368,13 +283,13 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
+                    {/* ON PAGE */}
                     {webhookLogs.map((log) => (
                       <WebhookLogDetails 
+                        showUrl
                         key={log.id} 
                         log={log} 
                         onReplay={handleReplayWebhook}
-                        isSelected={selectedWebhookIds.has(log.webhookId)}
-                        onSelect={(isSelected) => handleSelectWebhook(log.webhookId, isSelected)}
                         endpoints={endpoints}
                       />
                     ))}
@@ -454,7 +369,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Endpoint</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -553,7 +468,7 @@ function ReplayModal({ isOpen, onClose, api, endpoints }: {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Replay Webhooks</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -683,11 +598,11 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
   if (!isOpen || !endpoint) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">
-            Logs for {endpoint.url}
+            Logs for {endpoint.id} : <pre className='inline'>{endpoint.url}</pre>
           </h3>
           <button
             onClick={onClose}
@@ -700,9 +615,6 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Select
-                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   ID
                 </th>
@@ -727,6 +639,7 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+              {/* IN ENDPOINT */}
               {logs.map((log) => (
                 <WebhookLogDetails 
                   key={log.id} 

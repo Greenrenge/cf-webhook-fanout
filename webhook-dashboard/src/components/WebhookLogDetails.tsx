@@ -4,13 +4,14 @@ import { tryParseJSON, formatHeaders, prettyPrintJSON, formatBangkokTime } from 
 
 interface Props {
   log: WebhookLog;
+  showUrl?: boolean;
   onReplay?: (webhookId: string, endpointId?: number) => void;
   isSelected?: boolean;
   onSelect?: (isSelected: boolean) => void;
   endpoints?: Endpoint[];
 }
 
-export function WebhookLogDetails({ log, onReplay, isSelected = false, onSelect, endpoints = [] }: Props) {
+export function WebhookLogDetails({ log, onReplay,showUrl,endpoints = [] }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const headers = formatHeaders(log.headers);
@@ -24,19 +25,6 @@ export function WebhookLogDetails({ log, onReplay, isSelected = false, onSelect,
         onClick={() => setExpanded(!expanded)}
         className="hover:bg-gray-50 cursor-pointer"
       >
-        <td className="px-6 py-4 whitespace-nowrap">
-          {log.direction === 'incoming' && onSelect && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation();
-                onSelect(e.target.checked);
-              }}
-              className="rounded"
-            />
-          )}
-        </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
           {log.id}
         </td>
@@ -52,67 +40,49 @@ export function WebhookLogDetails({ log, onReplay, isSelected = false, onSelect,
             {log.direction}
           </span>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {log.endpointUrl || 'N/A'}
+          {showUrl && log.endpointUrl && (
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            <a 
+              href={log.endpointUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-blue-600 hover:underline"
+            >
+              {log.endpointUrl}
+            </a>
+          
         </td>
+          ) 
+        }
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
           {log.method}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-            (log.statusCode || 0) >= 400
+            (log.statusCode || 503) >= 400 
               ? 'bg-red-100 text-red-800'
               : 'bg-green-100 text-green-800'
           }`}>
-            {log.statusCode || 'N/A'}
+            {log.statusCode || 'Timeout'}
           </span>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           {formatBangkokTime(log.createdAt)}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-          {log.direction === 'incoming' ? (
             <div className="flex gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onReplay && log.webhookId) {
-                    onReplay(log.webhookId);
+                    onReplay(log.webhookId, showUrl ? undefined : endpoints.find(ep=> ep.url === log.endpointUrl)?.id);
                   }
                 }}
                 className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
-                Replay All
+                Replay
               </button>
-              {endpoints.length > 0 && (
-                <select
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    const endpointId = parseInt(e.target.value);
-                    if (onReplay && log.webhookId && endpointId) {
-                      onReplay(log.webhookId, endpointId);
-                    }
-                    e.target.value = ''; // Reset selection
-                  }}
-                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
-                  defaultValue=""
-                >
-                  <option value="" disabled>Replay to...</option>
-                  {endpoints.map(endpoint => (
-                    <option key={endpoint.id} value={endpoint.id}>
-                      {endpoint.url.length > 30 ? `${endpoint.url.substring(0, 30)}...` : endpoint.url}
-                      {endpoint.isPrimary ? ' (Primary)' : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
             </div>
-          ) : (
-            <span className="text-xs text-gray-400">
-              -
-            </span>
-          )}
         </td>
       </tr>
 
