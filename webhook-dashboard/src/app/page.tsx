@@ -49,27 +49,66 @@ export default function Dashboard() {
           id: 1,
           webhookId: 'webhook-123-456-789',
           direction: 'incoming' as const,
-          endpointUrl: 'https://example.com/webhook',
+          endpointUrl: undefined,
           method: 'POST',
-          headers: '{"content-type": "application/json"}',
-          body: '{"test": "data"}',
-          statusCode: 200,
-          responseBody: '{"success": true}',
-          responseTime: 150,
-          createdAt: new Date().toISOString()
+          headers: '{"content-type": "application/json", "x-webhook-signature": "sha256=abc123"}',
+          body: '{"event": "user.created", "data": {"user_id": "123", "email": "test@example.com"}}',
+          statusCode: undefined,
+          responseBody: undefined,
+          responseTime: undefined,
+          createdAt: new Date(Date.now() - 10000).toISOString()
         },
         {
           id: 2,
-          webhookId: 'webhook-987-654-321',
+          webhookId: 'webhook-123-456-789',
           direction: 'outgoing' as const,
-          endpointUrl: 'https://api.example.com/notify',
+          endpointUrl: 'https://primary-endpoint.example.com/webhook',
           method: 'POST',
-          headers: '{"authorization": "Bearer xxx"}',
-          body: '{"notification": "sent"}',
+          headers: '{"content-type": "application/json", "authorization": "Bearer primary-token"}',
+          body: '{"event": "user.created", "data": {"user_id": "123", "email": "test@example.com"}}',
+          statusCode: 200,
+          responseBody: '{"success": true, "id": "primary-response-123"}',
+          responseTime: 150,
+          createdAt: new Date(Date.now() - 9500).toISOString()
+        },
+        {
+          id: 3,
+          webhookId: 'webhook-123-456-789',
+          direction: 'outgoing' as const,
+          endpointUrl: 'https://secondary-endpoint.example.com/webhook',
+          method: 'POST',
+          headers: '{"content-type": "application/json", "authorization": "Bearer secondary-token"}',
+          body: '{"event": "user.created", "data": {"user_id": "123", "email": "test@example.com"}}',
           statusCode: 201,
           responseBody: '{"received": true}',
           responseTime: 200,
-          createdAt: new Date().toISOString()
+          createdAt: new Date(Date.now() - 9000).toISOString()
+        },
+        {
+          id: 4,
+          webhookId: 'webhook-987-654-321',
+          direction: 'incoming' as const,
+          endpointUrl: undefined,
+          method: 'POST',
+          headers: '{"content-type": "application/json", "x-event-type": "order.completed"}',
+          body: '{"event": "order.completed", "order_id": "order-456"}',
+          statusCode: undefined,
+          responseBody: undefined,
+          responseTime: undefined,
+          createdAt: new Date(Date.now() - 5000).toISOString()
+        },
+        {
+          id: 5,
+          webhookId: 'webhook-987-654-321',
+          direction: 'outgoing' as const,
+          endpointUrl: 'https://primary-endpoint.example.com/webhook',
+          method: 'POST',
+          headers: '{"content-type": "application/json", "authorization": "Bearer primary-token"}',
+          body: '{"event": "order.completed", "order_id": "order-456"}',
+          statusCode: 500,
+          responseBody: '{"error": "Internal server error"}',
+          responseTime: 300,
+          createdAt: new Date(Date.now() - 4500).toISOString()
         }
       ]);
     } finally {

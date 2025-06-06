@@ -55,12 +55,16 @@ export function WebhookLogDetails({ log, onReplay }: Props) {
           {formatBangkokTime(log.createdAt)}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-          {log.direction === 'incoming' && onReplay && log.webhookId ? (
+          {log.direction === 'incoming' ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 console.log('Replaying webhook:', log.webhookId);
-                onReplay(log.webhookId);
+                if (onReplay && log.webhookId) {
+                  onReplay(log.webhookId);
+                } else {
+                  console.log('Missing onReplay or webhookId');
+                }
               }}
               className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             >
@@ -68,7 +72,7 @@ export function WebhookLogDetails({ log, onReplay }: Props) {
             </button>
           ) : (
             <span className="text-xs text-gray-400">
-              {log.direction === 'outgoing' ? 'Outgoing' : 'No replay'}
+              -
             </span>
           )}
         </td>
