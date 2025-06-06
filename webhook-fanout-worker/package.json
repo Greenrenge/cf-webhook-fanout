@@ -9,7 +9,7 @@
 		"test": "vitest",
 		"cf-typegen": "wrangler types",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "wrangler d1 migrations apply webhook-fanout-db",
+		"db:migrate": "wrangler d1 migrations apply webhook-fanout-db --remote",
 		"db:migrate-local": "wrangler d1 migrations apply webhook-fanout-db --local",
 		"db:studio": "drizzle-kit studio"
 	},
