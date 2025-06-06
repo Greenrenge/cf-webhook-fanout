@@ -9,12 +9,12 @@ export const endpoints = sqliteTable('endpoints', {
 	headers: text('headers'), // JSON string of custom headers
 	tenantId: text('tenant_id'),
 	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-	createdAt: text('created_at')
+	createdAt: integer('created_at')
 		.notNull()
-		.default(sql`(datetime('now'))`),
-	updatedAt: text('updated_at')
+		.$defaultFn(() => Date.now()),
+	updatedAt: integer('updated_at')
 		.notNull()
-		.default(sql`(datetime('now'))`),
+		.$defaultFn(() => Date.now()),
 });
 
 // Webhook logs table - stores all webhook activity
