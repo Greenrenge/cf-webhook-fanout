@@ -14,10 +14,6 @@ migrations_dir = "drizzle"
 [vars]
 WEBHOOK_PATH = "/webhook"
 
-# Assets configuration
-[assets]
-directory = "./public"
-
 # Observability
 [observability]
 enabled = true

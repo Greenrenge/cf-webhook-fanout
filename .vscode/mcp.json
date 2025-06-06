@@ -1,0 +1,19 @@
+{
+	"servers": {
+		"projected_memory": {
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"-e",
+				"MEMORY_FILE_PATH=/memory/memory.json",
+				"-v",
+				"claude-memory:/app/dist",
+				"-v",
+				"${workspaceFolder}/.github/memory:/memory",
+				"--rm",
+				"mcp/memory"
+			]
+		},
+	}
+}
