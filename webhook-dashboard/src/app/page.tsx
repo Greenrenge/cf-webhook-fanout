@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [showEndpointLogs, setShowEndpointLogs] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [endpointLogs, setEndpointLogs] = useState<WebhookLog[]>([]);
+  const [selectedWebhookIds, setSelectedWebhookIds] = useState<Set<string>>(new Set());
 
   const api = useMemo(() => new WebhookAPI(), []);
 
@@ -74,14 +75,69 @@ export default function Dashboard() {
     }
   };
 
-  const handleReplayWebhook = async (webhookId: string) => {
+  const handleReplayWebhook = async (webhookId: string, endpointId?: number) => {
     try {
-      await api.replayWebhookById(webhookId);
-      alert('Webhook replayed successfully');
+      await api.replayWebhookById(webhookId, endpointId);
+      alert(`Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`);
+      await loadData(); // Refresh logs to show replay
     } catch (error) {
       console.error('Failed to replay webhook:', error);
       alert('Failed to replay webhook');
     }
+  };
+
+  const handleSelectWebhook = (webhookId: string, isSelected: boolean) => {
+    setSelectedWebhookIds(prev => {
+      const newSet = new Set(prev);
+      if (isSelected) {
+        newSet.add(webhookId);
+      } else {
+        newSet.delete(webhookId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllWebhooks = (isSelected: boolean) => {
+    if (isSelected) {
+      const incomingWebhookIds = new Set(
+        webhookLogs
+          .filter(log => log.direction === 'incoming')
+          .map(log => log.webhookId)
+      );
+      setSelectedWebhookIds(incomingWebhookIds);
+    } else {
+      setSelectedWebhookIds(new Set());
+    }
+  };
+
+  const handleReplaySelected = async (endpointId?: number) => {
+    if (selectedWebhookIds.size === 0) {
+      alert('Please select webhooks to replay');
+      return;
+    }
+
+    const confirmMessage = `Replay ${selectedWebhookIds.size} webhook(s)${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}?`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const webhookId of selectedWebhookIds) {
+      try {
+        await api.replayWebhookById(webhookId, endpointId);
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to replay webhook ${webhookId}:`, error);
+        errorCount++;
+      }
+    }
+
+    alert(`Replay completed: ${successCount} successful, ${errorCount} failed`);
+    setSelectedWebhookIds(new Set());
+    await loadData(); // Refresh logs
   };
 
   // Temporarily removing authentication check
@@ -240,12 +296,51 @@ export default function Dashboard() {
             {/* Webhook Logs Section */}
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Webhook Logs</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-medium text-gray-900">Webhook Logs</h2>
+                  <div className="flex gap-2">
+                    {selectedWebhookIds.size > 0 && (
+                      <>
+                        <button
+                          onClick={() => handleReplaySelected()}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                        >
+                          Replay Selected ({selectedWebhookIds.size})
+                        </button>
+                        <div className="relative">
+                          <select
+                            onChange={(e) => {
+                              const endpointId = e.target.value ? parseInt(e.target.value) : undefined;
+                              handleReplaySelected(endpointId);
+                            }}
+                            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Replay to Endpoint...</option>
+                            {endpoints.map(endpoint => (
+                              <option key={endpoint.id} value={endpoint.id}>
+                                {endpoint.url} {endpoint.isPrimary ? '(Primary)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectedWebhookIds.size > 0 && selectedWebhookIds.size === webhookLogs.filter(log => log.direction === 'incoming').length}
+                          onChange={(e) => handleSelectAllWebhooks(e.target.checked)}
+                          className="rounded"
+                        />
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         ID
                       </th>
@@ -274,7 +369,14 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {webhookLogs.map((log) => (
-                      <WebhookLogDetails key={log.id} log={log} onReplay={handleReplayWebhook} />
+                      <WebhookLogDetails 
+                        key={log.id} 
+                        log={log} 
+                        onReplay={handleReplayWebhook}
+                        isSelected={selectedWebhookIds.has(log.webhookId)}
+                        onSelect={(isSelected) => handleSelectWebhook(log.webhookId, isSelected)}
+                        endpoints={endpoints}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -300,6 +402,7 @@ export default function Dashboard() {
         isOpen={showReplay}
         onClose={() => setShowReplay(false)}
         api={api}
+        endpoints={endpoints}
       />
 
       {/* Endpoint Logs Modal */}
@@ -309,6 +412,7 @@ export default function Dashboard() {
         endpoint={selectedEndpoint}
         logs={endpointLogs}
         onReplay={handleReplayWebhook}
+        endpoints={endpoints}
       />
     </div>
   );
@@ -414,15 +518,17 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
 }
 
 // Replay Modal Component
-function ReplayModal({ isOpen, onClose, api }: {
+function ReplayModal({ isOpen, onClose, api, endpoints }: {
   isOpen: boolean;
   onClose: () => void;
   api: WebhookAPI;
+  endpoints: Endpoint[];
 }) {
   const [replayType, setReplayType] = useState<'id' | 'dateRange'>('id');
   const [webhookId, setWebhookId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedEndpoint, setSelectedEndpoint] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -430,11 +536,11 @@ function ReplayModal({ isOpen, onClose, api }: {
     try {
       setLoading(true);
       if (replayType === 'id') {
-        await api.replayWebhookById(webhookId);
+        await api.replayWebhookById(webhookId, selectedEndpoint);
       } else {
-        await api.replayWebhooksByDateRange(startDate, endDate);
+        await api.replayWebhooksByDateRange(startDate, endDate, selectedEndpoint);
       }
-      alert('Replay initiated successfully');
+      alert(`Replay initiated successfully${selectedEndpoint ? ` to endpoint ${selectedEndpoint}` : ' to all endpoints'}`);
       onClose();
     } catch (error) {
       console.error('Failed to replay webhook:', error);
@@ -522,6 +628,27 @@ function ReplayModal({ isOpen, onClose, api }: {
             </>
           )}
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Target Endpoint (optional)
+            </label>
+            <select
+              value={selectedEndpoint || ''}
+              onChange={(e) => setSelectedEndpoint(e.target.value ? parseInt(e.target.value) : undefined)}
+              className="w-full border border-gray-300 text-gray-700 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All active endpoints</option>
+              {endpoints.map(endpoint => (
+                <option key={endpoint.id} value={endpoint.id}>
+                  {endpoint.url} {endpoint.isPrimary ? '(Primary)' : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Leave empty to replay to all active endpoints
+            </p>
+          </div>
+
           <div className="flex space-x-3">
             <button
               type="button"
@@ -545,12 +672,13 @@ function ReplayModal({ isOpen, onClose, api }: {
 }
 
 // Endpoint Logs Modal Component
-function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay }: {
+function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoints }: {
   isOpen: boolean;
   onClose: () => void;
   endpoint: Endpoint | null;
   logs: WebhookLog[];
-  onReplay: (webhookId: string) => void;
+  onReplay: (webhookId: string, endpointId?: number) => void;
+  endpoints: Endpoint[];
 }) {
   if (!isOpen || !endpoint) return null;
 
@@ -572,6 +700,9 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay }: {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Select
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   ID
                 </th>
@@ -597,7 +728,12 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay }: {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {logs.map((log) => (
-                <WebhookLogDetails key={log.id} log={log} onReplay={onReplay} />
+                <WebhookLogDetails 
+                  key={log.id} 
+                  log={log} 
+                  onReplay={onReplay}
+                  endpoints={endpoints}
+                />
               ))}
             </tbody>
           </table>

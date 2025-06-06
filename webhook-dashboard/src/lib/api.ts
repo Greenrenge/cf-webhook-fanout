@@ -90,25 +90,32 @@ export class WebhookAPI {
     return data.logs;
   }
 
-  async replayWebhookById(webhookId: string): Promise<void> {
+  async replayWebhookById(webhookId: string, endpointId?: number): Promise<void> {
+    const body = endpointId ? { endpointId } : {};
     const response = await fetch(`${this.baseUrl}/replay/${webhookId}`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       throw new Error('Failed to replay webhook');
     }
   }
 
-  async replayWebhooksByDateRange(startDate: string, endDate: string): Promise<void> {
+  async replayWebhooksByDateRange(startDate: string, endDate: string, endpointId?: number): Promise<void> {
+    const body: { startDate: string; endDate: string; endpointId?: number } = { startDate, endDate };
+    if (endpointId) {
+      body.endpointId = endpointId;
+    }
+    
     const response = await fetch(`${this.baseUrl}/replay`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        startDate,
-        endDate,
-      }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       throw new Error('Failed to replay webhooks');

@@ -221,11 +221,20 @@ app.get('/webhooks', async (c) => {
   }
 });
 
-// Replay webhook by ID
+// Replay webhook by ID with optional endpoint selection
 app.post('/replay/:webhookId', async (c) => {
   try {
     const db = createDB(c.env.DB);
     const webhookId = c.req.param('webhookId');
+    
+    // Check for optional endpoint ID in request body
+    let endpointId: number | undefined;
+    try {
+      const body = await c.req.json();
+      endpointId = body.endpointId;
+    } catch {
+      // No body or invalid JSON, proceed without endpoint filtering
+    }
     
     // Get the original webhook
     const [originalWebhook] = await db.select()
@@ -237,13 +246,26 @@ app.post('/replay/:webhookId', async (c) => {
       return c.json({ error: 'Webhook not found' }, 404);
     }
 
-    // Get current active endpoints
-    const activeEndpoints = await db.select()
-      .from(endpoints)
-      .where(eq(endpoints.isActive, true));
+    // Get endpoints based on selection
+    let activeEndpoints;
+    if (endpointId) {
+      // Replay to specific endpoint
+      activeEndpoints = await db.select()
+        .from(endpoints)
+        .where(and(eq(endpoints.id, endpointId), eq(endpoints.isActive, true)));
+      
+      if (activeEndpoints.length === 0) {
+        return c.json({ error: 'Endpoint not found or not active' }, 404);
+      }
+    } else {
+      // Replay to all active endpoints
+      activeEndpoints = await db.select()
+        .from(endpoints)
+        .where(eq(endpoints.isActive, true));
 
-    if (activeEndpoints.length === 0) {
-      return c.json({ error: 'No active endpoints configured' }, 500);
+      if (activeEndpoints.length === 0) {
+        return c.json({ error: 'No active endpoints configured' }, 500);
+      }
     }
 
     // Create new webhook ID for replay
@@ -256,13 +278,13 @@ app.post('/replay/:webhookId', async (c) => {
       headers: originalWebhook.headers,
       body: originalWebhook.body,
       sourceIp: 'replay',
-      userAgent: 'webhook-replay',
-      processingStatus: 'replaying',
+      userAgent: `webhook-replay${endpointId ? `-endpoint-${endpointId}` : ''}`,
+      processingStatus: 'pending',
     });
 
-    // Process webhook fanout with current endpoints
+    // Process webhook fanout with selected endpoints
     const headers = originalWebhook.headers ? JSON.parse(originalWebhook.headers) : {};
-    await processWebhookFanout(
+    const results = await processWebhookFanout(
       db, 
       replayWebhookId, 
       originalWebhook.method, 
@@ -271,19 +293,42 @@ app.post('/replay/:webhookId', async (c) => {
       activeEndpoints
     );
 
-    return c.json({ message: 'Webhook replayed successfully', replayWebhookId });
+    // Update processing status based on results
+    const primaryResult = results.find(r => r.isPrimary);
+    let processingStatus = 'completed';
+    
+    if (primaryResult) {
+      processingStatus = primaryResult.success ? 'completed' : 'failed';
+    } else {
+      processingStatus = results.some(r => r.success) ? 'completed' : 'failed';
+    }
+    
+    await db.update(incomingWebhooks)
+      .set({ processingStatus })
+      .where(eq(incomingWebhooks.id, replayWebhookId));
+
+    return c.json({ 
+      message: `Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`, 
+      replayWebhookId,
+      endpointsCount: activeEndpoints.length,
+      results: results.map(r => ({ 
+        endpointId: r.endpointId, 
+        success: r.success, 
+        statusCode: r.statusCode 
+      }))
+    });
   } catch (error) {
     console.error('Error replaying webhook:', error);
     return c.json({ error: 'Failed to replay webhook' }, 500);
   }
 });
 
-// Replay webhooks by date range
+// Replay webhooks by date range with optional endpoint selection
 app.post('/replay', async (c) => {
   try {
     const db = createDB(c.env.DB);
     const body = await c.req.json();
-    const { startDate, endDate } = body;
+    const { startDate, endDate, endpointId } = body;
     
     if (!startDate || !endDate) {
       return c.json({ error: 'startDate and endDate are required' }, 400);
@@ -304,16 +349,30 @@ app.post('/replay', async (c) => {
       return c.json({ message: 'No webhooks found in date range', count: 0 });
     }
 
-    // Get current active endpoints
-    const activeEndpoints = await db.select()
-      .from(endpoints)
-      .where(eq(endpoints.isActive, true));
+    // Get endpoints based on selection
+    let activeEndpoints;
+    if (endpointId) {
+      // Replay to specific endpoint
+      activeEndpoints = await db.select()
+        .from(endpoints)
+        .where(and(eq(endpoints.id, endpointId), eq(endpoints.isActive, true)));
+      
+      if (activeEndpoints.length === 0) {
+        return c.json({ error: 'Endpoint not found or not active' }, 404);
+      }
+    } else {
+      // Replay to all active endpoints
+      activeEndpoints = await db.select()
+        .from(endpoints)
+        .where(eq(endpoints.isActive, true));
 
-    if (activeEndpoints.length === 0) {
-      return c.json({ error: 'No active endpoints configured' }, 500);
+      if (activeEndpoints.length === 0) {
+        return c.json({ error: 'No active endpoints configured' }, 500);
+      }
     }
 
     let replayCount = 0;
+    const replayResults = [];
     
     // Replay each webhook
     for (const webhook of webhooks) {
@@ -327,13 +386,13 @@ app.post('/replay', async (c) => {
           headers: webhook.headers,
           body: webhook.body,
           sourceIp: 'replay-batch',
-          userAgent: 'webhook-replay-batch',
-          processingStatus: 'replaying',
+          userAgent: `webhook-replay-batch${endpointId ? `-endpoint-${endpointId}` : ''}`,
+          processingStatus: 'pending',
         });
 
         // Process webhook fanout
         const headers = webhook.headers ? JSON.parse(webhook.headers) : {};
-        await processWebhookFanout(
+        const results = await processWebhookFanout(
           db, 
           replayWebhookId, 
           webhook.method, 
@@ -341,18 +400,47 @@ app.post('/replay', async (c) => {
           webhook.body || '', 
           activeEndpoints
         );
+
+        // Update processing status based on results
+        const primaryResult = results.find(r => r.isPrimary);
+        let processingStatus = 'completed';
+        
+        if (primaryResult) {
+          processingStatus = primaryResult.success ? 'completed' : 'failed';
+        } else {
+          processingStatus = results.some(r => r.success) ? 'completed' : 'failed';
+        }
+        
+        await db.update(incomingWebhooks)
+          .set({ processingStatus })
+          .where(eq(incomingWebhooks.id, replayWebhookId));
+        
+        replayResults.push({
+          originalWebhookId: webhook.id,
+          replayWebhookId,
+          success: processingStatus === 'completed',
+          endpointsCount: activeEndpoints.length
+        });
         
         replayCount++;
       } catch (error) {
         console.error(`Error replaying webhook ${webhook.id}:`, error);
+        replayResults.push({
+          originalWebhookId: webhook.id,
+          replayWebhookId: null,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
         // Continue with other webhooks
       }
     }
 
     return c.json({ 
-      message: 'Webhook batch replay completed', 
+      message: `Webhook batch replay completed${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`, 
       totalFound: webhooks.length,
-      successfulReplays: replayCount 
+      successfulReplays: replayCount,
+      endpointsCount: activeEndpoints.length,
+      results: replayResults
     });
   } catch (error) {
     console.error('Error replaying webhooks:', error);
@@ -390,6 +478,7 @@ async function handleWebhook(c: any) {
       body,
       sourceIp: c.req.header('cf-connecting-ip') || 'unknown',
       userAgent: c.req.header('user-agent') || 'unknown',
+      processingStatus: 'pending',
     });
 
     // Get all active endpoints
@@ -398,14 +487,34 @@ async function handleWebhook(c: any) {
       .where(eq(endpoints.isActive, true));
 
     if (activeEndpoints.length === 0) {
+      // Update processing status to failed
+      await db.update(incomingWebhooks)
+        .set({ processingStatus: 'failed' })
+        .where(eq(incomingWebhooks.id, webhookId));
+      
       return c.json({ error: 'No active endpoints configured' }, 500);
     }
 
     // Process webhooks
     const results = await processWebhookFanout(db, webhookId, method, headers, body, activeEndpoints);
     
-    // Return primary endpoint response or fallback
+    // Determine processing status based on primary endpoint result
     const primaryResult = results.find(r => r.isPrimary);
+    let processingStatus = 'completed';
+    
+    if (primaryResult) {
+      processingStatus = primaryResult.success ? 'completed' : 'failed';
+    } else {
+      // No primary endpoint, check if any endpoint succeeded
+      processingStatus = results.some(r => r.success) ? 'completed' : 'failed';
+    }
+    
+    // Update processing status
+    await db.update(incomingWebhooks)
+      .set({ processingStatus })
+      .where(eq(incomingWebhooks.id, webhookId));
+    
+    // Return primary endpoint response or fallback
     if (primaryResult && primaryResult.success) {
       return new Response(primaryResult.responseBody, {
         status: primaryResult.statusCode,
@@ -418,6 +527,25 @@ async function handleWebhook(c: any) {
     
   } catch (error) {
     console.error('Webhook processing error:', error);
+    
+    // Try to update processing status to failed if webhookId exists
+    try {
+      const db = createDB(c.env.DB);
+      // We need to find the webhook ID - create a simple UUID for error case
+      const errorWebhookId = crypto.randomUUID();
+      await db.insert(incomingWebhooks).values({
+        id: errorWebhookId,
+        method: c.req.method,
+        headers: JSON.stringify(Object.fromEntries(c.req.raw.headers)),
+        body: 'Error processing webhook',
+        sourceIp: c.req.header('cf-connecting-ip') || 'unknown',
+        userAgent: c.req.header('user-agent') || 'unknown',
+        processingStatus: 'failed',
+      });
+    } catch (dbError) {
+      console.error('Failed to log error webhook:', dbError);
+    }
+    
     return c.json({ error: 'Internal server error' }, 500);
   }
 }

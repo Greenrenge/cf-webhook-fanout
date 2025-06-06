@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { WebhookLog } from '@/types/webhook';
+import { WebhookLog, Endpoint } from '@/types/webhook';
 import { tryParseJSON, formatHeaders, prettyPrintJSON, formatBangkokTime } from '@/lib/utils';
 
 interface Props {
   log: WebhookLog;
-  onReplay?: (webhookId: string) => void;
+  onReplay?: (webhookId: string, endpointId?: number) => void;
+  isSelected?: boolean;
+  onSelect?: (isSelected: boolean) => void;
+  endpoints?: Endpoint[];
 }
 
-export function WebhookLogDetails({ log, onReplay }: Props) {
+export function WebhookLogDetails({ log, onReplay, isSelected = false, onSelect, endpoints = [] }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const headers = formatHeaders(log.headers);
@@ -21,6 +24,19 @@ export function WebhookLogDetails({ log, onReplay }: Props) {
         onClick={() => setExpanded(!expanded)}
         className="hover:bg-gray-50 cursor-pointer"
       >
+        <td className="px-6 py-4 whitespace-nowrap">
+          {log.direction === 'incoming' && onSelect && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onSelect(e.target.checked);
+              }}
+              className="rounded"
+            />
+          )}
+        </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
           {log.id}
         </td>
@@ -56,17 +72,42 @@ export function WebhookLogDetails({ log, onReplay }: Props) {
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
           {log.direction === 'incoming' ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onReplay && log.webhookId) {
-                  onReplay(log.webhookId);
-                }
-              }}
-              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Replay
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onReplay && log.webhookId) {
+                    onReplay(log.webhookId);
+                  }
+                }}
+                className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                Replay All
+              </button>
+              {endpoints.length > 0 && (
+                <select
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const endpointId = parseInt(e.target.value);
+                    if (onReplay && log.webhookId && endpointId) {
+                      onReplay(log.webhookId, endpointId);
+                    }
+                    e.target.value = ''; // Reset selection
+                  }}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                  defaultValue=""
+                >
+                  <option value="" disabled>Replay to...</option>
+                  {endpoints.map(endpoint => (
+                    <option key={endpoint.id} value={endpoint.id}>
+                      {endpoint.url.length > 30 ? `${endpoint.url.substring(0, 30)}...` : endpoint.url}
+                      {endpoint.isPrimary ? ' (Primary)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           ) : (
             <span className="text-xs text-gray-400">
               -
@@ -78,13 +119,13 @@ export function WebhookLogDetails({ log, onReplay }: Props) {
       {/* Expanded details */}
       {expanded && (
         <tr className="bg-gray-50">
-          <td colSpan={8} className="px-6 py-4">
+          <td colSpan={9} className="px-6 py-4">
             <div className="space-y-6">
               {/* Headers */}
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Headers:</h4>
                 <pre className="bg-gray-100 text-gray-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
-                  {prettyPrintJSON(headers) as string}
+                  {String(prettyPrintJSON(headers))}
                 </pre>
               </div>
 
