@@ -1,6 +1,6 @@
 import { Endpoint, WebhookLog } from '@/types/webhook';
 
-const WORKER_API_URL = process.env.WORKER_API_URL || 'http://localhost:8787';
+const WORKER_API_URL = process.env.NEXT_PUBLIC_WORKER_API_URL || 'http://localhost:8787';
 
 export class WebhookAPI {
   private baseUrl: string;

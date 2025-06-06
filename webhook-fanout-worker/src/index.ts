@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { createDB } from './db';
 import { endpoints, webhookLogs, incomingWebhooks } from './db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, gte, lte } from 'drizzle-orm';
 
 type Bindings = {
   DB: D1Database;
@@ -84,6 +84,239 @@ app.post('/config/endpoints', async (c) => {
   } catch (error) {
     console.error('Error creating endpoint:', error);
     return c.json({ error: 'Failed to create endpoint' }, 500);
+  }
+});
+
+// Update endpoint
+app.patch('/config/endpoints/:id', async (c) => {
+  try {
+    const db = createDB(c.env.DB);
+    const id = parseInt(c.req.param('id'));
+    const body = await c.req.json();
+    
+    const { url, isPrimary, headers, tenantId, isActive } = body;
+    
+    // If setting as primary, unset all other primary endpoints
+    if (isPrimary === true) {
+      await db.update(endpoints)
+        .set({ isPrimary: false })
+        .where(eq(endpoints.isPrimary, true));
+    }
+
+    const updateData: any = {};
+    if (url !== undefined) updateData.url = url;
+    if (isPrimary !== undefined) updateData.isPrimary = isPrimary;
+    if (headers !== undefined) updateData.headers = JSON.stringify(headers);
+    if (tenantId !== undefined) updateData.tenantId = tenantId;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    
+    updateData.updatedAt = new Date().toISOString();
+
+    const [updatedEndpoint] = await db.update(endpoints)
+      .set(updateData)
+      .where(eq(endpoints.id, id))
+      .returning();
+
+    if (!updatedEndpoint) {
+      return c.json({ error: 'Endpoint not found' }, 404);
+    }
+
+    return c.json({ endpoint: updatedEndpoint });
+  } catch (error) {
+    console.error('Error updating endpoint:', error);
+    return c.json({ error: 'Failed to update endpoint' }, 500);
+  }
+});
+
+// Delete endpoint
+app.delete('/config/endpoints/:id', async (c) => {
+  try {
+    const db = createDB(c.env.DB);
+    const id = parseInt(c.req.param('id'));
+    
+    const [deletedEndpoint] = await db.delete(endpoints)
+      .where(eq(endpoints.id, id))
+      .returning();
+
+    if (!deletedEndpoint) {
+      return c.json({ error: 'Endpoint not found' }, 404);
+    }
+
+    return c.json({ message: 'Endpoint deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting endpoint:', error);
+    return c.json({ error: 'Failed to delete endpoint' }, 500);
+  }
+});
+
+// Get webhook logs
+app.get('/logs', async (c) => {
+  try {
+    const db = createDB(c.env.DB);
+    const limit = parseInt(c.req.query('limit') || '100');
+    const endpointUrl = c.req.query('endpoint');
+    const endpointId = c.req.query('endpointId');
+
+    let whereConditions = [];
+    
+    if (endpointUrl) {
+      whereConditions.push(eq(webhookLogs.endpointUrl, endpointUrl));
+    } else if (endpointId) {
+      // Join with endpoints table to filter by endpoint ID
+      const endpointRecord = await db.select().from(endpoints).where(eq(endpoints.id, parseInt(endpointId))).limit(1);
+      if (endpointRecord.length > 0) {
+        whereConditions.push(eq(webhookLogs.endpointUrl, endpointRecord[0].url));
+      }
+    }
+    
+    let query = db.select().from(webhookLogs);
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions));
+    }
+    
+    const logs = await query.orderBy(desc(webhookLogs.createdAt)).limit(limit);
+    
+    return c.json({ logs });
+  } catch (error) {
+    console.error('Error fetching logs:', error);
+    return c.json({ error: 'Failed to fetch logs' }, 500);
+  }
+});
+
+// Replay webhook by ID
+app.post('/replay/:webhookId', async (c) => {
+  try {
+    const db = createDB(c.env.DB);
+    const webhookId = c.req.param('webhookId');
+    
+    // Get the original webhook
+    const [originalWebhook] = await db.select()
+      .from(incomingWebhooks)
+      .where(eq(incomingWebhooks.id, webhookId))
+      .limit(1);
+
+    if (!originalWebhook) {
+      return c.json({ error: 'Webhook not found' }, 404);
+    }
+
+    // Get current active endpoints
+    const activeEndpoints = await db.select()
+      .from(endpoints)
+      .where(eq(endpoints.isActive, true));
+
+    if (activeEndpoints.length === 0) {
+      return c.json({ error: 'No active endpoints configured' }, 500);
+    }
+
+    // Create new webhook ID for replay
+    const replayWebhookId = crypto.randomUUID();
+    
+    // Log the replay attempt
+    await db.insert(incomingWebhooks).values({
+      id: replayWebhookId,
+      method: originalWebhook.method,
+      headers: originalWebhook.headers,
+      body: originalWebhook.body,
+      sourceIp: 'replay',
+      userAgent: 'webhook-replay',
+      processingStatus: 'replaying',
+    });
+
+    // Process webhook fanout with current endpoints
+    const headers = originalWebhook.headers ? JSON.parse(originalWebhook.headers) : {};
+    await processWebhookFanout(
+      db, 
+      replayWebhookId, 
+      originalWebhook.method, 
+      headers, 
+      originalWebhook.body || '', 
+      activeEndpoints
+    );
+
+    return c.json({ message: 'Webhook replayed successfully', replayWebhookId });
+  } catch (error) {
+    console.error('Error replaying webhook:', error);
+    return c.json({ error: 'Failed to replay webhook' }, 500);
+  }
+});
+
+// Replay webhooks by date range
+app.post('/replay', async (c) => {
+  try {
+    const db = createDB(c.env.DB);
+    const body = await c.req.json();
+    const { startDate, endDate } = body;
+    
+    if (!startDate || !endDate) {
+      return c.json({ error: 'startDate and endDate are required' }, 400);
+    }
+
+    // Get webhooks in date range
+    const webhooks = await db.select()
+      .from(incomingWebhooks)
+      .where(
+        // Using string comparison for SQLite datetime format
+        `created_at >= '${startDate}' AND created_at <= '${endDate}'`
+      )
+      .orderBy(desc(incomingWebhooks.createdAt));
+
+    if (webhooks.length === 0) {
+      return c.json({ message: 'No webhooks found in date range', count: 0 });
+    }
+
+    // Get current active endpoints
+    const activeEndpoints = await db.select()
+      .from(endpoints)
+      .where(eq(endpoints.isActive, true));
+
+    if (activeEndpoints.length === 0) {
+      return c.json({ error: 'No active endpoints configured' }, 500);
+    }
+
+    let replayCount = 0;
+    
+    // Replay each webhook
+    for (const webhook of webhooks) {
+      try {
+        const replayWebhookId = crypto.randomUUID();
+        
+        // Log the replay attempt
+        await db.insert(incomingWebhooks).values({
+          id: replayWebhookId,
+          method: webhook.method,
+          headers: webhook.headers,
+          body: webhook.body,
+          sourceIp: 'replay-batch',
+          userAgent: 'webhook-replay-batch',
+          processingStatus: 'replaying',
+        });
+
+        // Process webhook fanout
+        const headers = webhook.headers ? JSON.parse(webhook.headers) : {};
+        await processWebhookFanout(
+          db, 
+          replayWebhookId, 
+          webhook.method, 
+          headers, 
+          webhook.body || '', 
+          activeEndpoints
+        );
+        
+        replayCount++;
+      } catch (error) {
+        console.error(`Error replaying webhook ${webhook.id}:`, error);
+        // Continue with other webhooks
+      }
+    }
+
+    return c.json({ 
+      message: 'Webhook batch replay completed', 
+      totalFound: webhooks.length,
+      successfulReplays: replayCount 
+    });
+  } catch (error) {
+    console.error('Error replaying webhooks:', error);
+    return c.json({ error: 'Failed to replay webhooks' }, 500);
   }
 });
 
