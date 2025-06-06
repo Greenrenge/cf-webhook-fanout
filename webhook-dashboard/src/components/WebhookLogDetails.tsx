@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { WebhookLog } from '@/types/webhook';
-import { tryParseJSON, formatHeaders, prettyPrintJSON } from '@/lib/utils';
+import { tryParseJSON, formatHeaders, prettyPrintJSON, formatBangkokTime } from '@/lib/utils';
 
 interface Props {
   log: WebhookLog;
+  onReplay?: (webhookId: string) => void;
 }
 
-export function WebhookLogDetails({ log }: Props) {
+export function WebhookLogDetails({ log, onReplay }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const headers = formatHeaders(log.headers);
@@ -22,6 +23,9 @@ export function WebhookLogDetails({ log }: Props) {
       >
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
           {log.id}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-900 font-mono">
+          {log.webhookId || 'N/A'}
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -48,14 +52,32 @@ export function WebhookLogDetails({ log }: Props) {
           </span>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {new Date(log.createdAt).toLocaleString()}
+          {formatBangkokTime(log.createdAt)}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          {log.direction === 'incoming' && onReplay && log.webhookId ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                console.log('Replaying webhook:', log.webhookId);
+                onReplay(log.webhookId);
+              }}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              Replay
+            </button>
+          ) : (
+            <span className="text-xs text-gray-400">
+              {log.direction === 'outgoing' ? 'Outgoing' : 'No replay'}
+            </span>
+          )}
         </td>
       </tr>
 
       {/* Expanded details */}
       {expanded && (
         <tr className="bg-gray-50">
-          <td colSpan={6} className="px-6 py-4">
+          <td colSpan={8} className="px-6 py-4">
             <div className="space-y-6">
               {/* Headers */}
               <div>
@@ -70,7 +92,7 @@ export function WebhookLogDetails({ log }: Props) {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Request Body:</h4>
                   <pre className="bg-gray-100 text-gray-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
-                    {prettyPrintJSON(body) as string}
+                    {String(prettyPrintJSON(body))}
                   </pre>
                 </div>
               )}
@@ -87,7 +109,7 @@ export function WebhookLogDetails({ log }: Props) {
                     )}
                   </div>
                   <pre className="bg-gray-100 text-gray-800 p-4 rounded-md overflow-auto max-h-48 text-sm">
-                    {prettyPrintJSON(responseBody) as string}
+                    {String(prettyPrintJSON(responseBody))}
                   </pre>
                 </div>
               )}

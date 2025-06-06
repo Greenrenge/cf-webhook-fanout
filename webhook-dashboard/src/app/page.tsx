@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Endpoint, WebhookLog } from '@/types/webhook';
 import { WebhookAPI } from '@/lib/api';
 import { WebhookLogDetails } from '@/components/WebhookLogDetails';
+import { formatBangkokDate } from '@/lib/utils';
 
 export default function Dashboard() {
   // For now, we'll simulate a logged-in user until we fix NextAuth
@@ -30,6 +31,47 @@ export default function Dashboard() {
       setWebhookLogs(logsData);
     } catch (error) {
       console.error('Failed to load data:', error);
+      // Add mock data for testing when worker is not available
+      console.log('Using mock data for testing');
+      setEndpoints([
+        {
+          id: 1,
+          url: 'https://example.com/webhook',
+          headers: '{}',
+          isPrimary: true,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ]);
+      setWebhookLogs([
+        {
+          id: 1,
+          webhookId: 'webhook-123-456-789',
+          direction: 'incoming' as const,
+          endpointUrl: 'https://example.com/webhook',
+          method: 'POST',
+          headers: '{"content-type": "application/json"}',
+          body: '{"test": "data"}',
+          statusCode: 200,
+          responseBody: '{"success": true}',
+          responseTime: 150,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 2,
+          webhookId: 'webhook-987-654-321',
+          direction: 'outgoing' as const,
+          endpointUrl: 'https://api.example.com/notify',
+          method: 'POST',
+          headers: '{"authorization": "Bearer xxx"}',
+          body: '{"notification": "sent"}',
+          statusCode: 201,
+          responseBody: '{"received": true}',
+          responseTime: 200,
+          createdAt: new Date().toISOString()
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -68,6 +110,16 @@ export default function Dashboard() {
       } catch (error) {
         console.error('Failed to delete endpoint:', error);
       }
+    }
+  };
+
+  const handleReplayWebhook = async (webhookId: string) => {
+    try {
+      await api.replayWebhookById(webhookId);
+      alert('Webhook replayed successfully');
+    } catch (error) {
+      console.error('Failed to replay webhook:', error);
+      alert('Failed to replay webhook');
     }
   };
 
@@ -195,7 +247,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(endpoint.createdAt).toLocaleDateString()}
+                          {formatBangkokDate(endpoint.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                           <button
@@ -237,6 +289,9 @@ export default function Dashboard() {
                         ID
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Webhook ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Direction
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -251,11 +306,14 @@ export default function Dashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Time
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {webhookLogs.map((log) => (
-                      <WebhookLogDetails key={log.id} log={log} />
+                      <WebhookLogDetails key={log.id} log={log} onReplay={handleReplayWebhook} />
                     ))}
                   </tbody>
                 </table>
@@ -289,6 +347,7 @@ export default function Dashboard() {
         onClose={() => setShowEndpointLogs(false)}
         endpoint={selectedEndpoint}
         logs={endpointLogs}
+        onReplay={handleReplayWebhook}
       />
     </div>
   );
@@ -525,11 +584,12 @@ function ReplayModal({ isOpen, onClose, api }: {
 }
 
 // Endpoint Logs Modal Component
-function EndpointLogsModal({ isOpen, onClose, endpoint, logs }: {
+function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay }: {
   isOpen: boolean;
   onClose: () => void;
   endpoint: Endpoint | null;
   logs: WebhookLog[];
+  onReplay: (webhookId: string) => void;
 }) {
   if (!isOpen || !endpoint) return null;
 
@@ -555,6 +615,9 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs }: {
                   ID
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Webhook ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Direction
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -566,11 +629,14 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs }: {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Time
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {logs.map((log) => (
-                <WebhookLogDetails key={log.id} log={log} />
+                <WebhookLogDetails key={log.id} log={log} onReplay={onReplay} />
               ))}
             </tbody>
           </table>

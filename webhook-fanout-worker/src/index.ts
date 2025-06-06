@@ -73,10 +73,18 @@ app.post('/config/endpoints', async (c) => {
         .where(eq(endpoints.isPrimary, true));
     }
 
+    // Handle headers - if it's already a string (from dashboard), don't double stringify
+    let headersString = '';
+    if (typeof headers === 'string') {
+      headersString = headers;
+    } else {
+      headersString = JSON.stringify(headers);
+    }
+
     const [newEndpoint] = await db.insert(endpoints).values({
       url,
       isPrimary,
-      headers: JSON.stringify(headers),
+      headers: headersString,
       tenantId,
     }).returning();
 
@@ -106,7 +114,14 @@ app.patch('/config/endpoints/:id', async (c) => {
     const updateData: any = {};
     if (url !== undefined) updateData.url = url;
     if (isPrimary !== undefined) updateData.isPrimary = isPrimary;
-    if (headers !== undefined) updateData.headers = JSON.stringify(headers);
+    if (headers !== undefined) {
+      // Handle headers - if it's already a string, don't double stringify
+      if (typeof headers === 'string') {
+        updateData.headers = headers;
+      } else {
+        updateData.headers = JSON.stringify(headers);
+      }
+    }
     if (tenantId !== undefined) updateData.tenantId = tenantId;
     if (isActive !== undefined) updateData.isActive = isActive;
     
@@ -169,17 +184,40 @@ app.get('/logs', async (c) => {
       }
     }
     
-    let query = db.select().from(webhookLogs);
+    let logs;
     if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions));
+      logs = await db.select().from(webhookLogs)
+        .where(and(...whereConditions))
+        .orderBy(desc(webhookLogs.createdAt))
+        .limit(limit);
+    } else {
+      logs = await db.select().from(webhookLogs)
+        .orderBy(desc(webhookLogs.createdAt))
+        .limit(limit);
     }
-    
-    const logs = await query.orderBy(desc(webhookLogs.createdAt)).limit(limit);
     
     return c.json({ logs });
   } catch (error) {
     console.error('Error fetching logs:', error);
     return c.json({ error: 'Failed to fetch logs' }, 500);
+  }
+});
+
+// Get incoming webhooks
+app.get('/webhooks', async (c) => {
+  try {
+    const db = createDB(c.env.DB);
+    const limit = parseInt(c.req.query('limit') || '100');
+    
+    const webhooks = await db.select()
+      .from(incomingWebhooks)
+      .orderBy(desc(incomingWebhooks.createdAt))
+      .limit(limit);
+    
+    return c.json({ webhooks });
+  } catch (error) {
+    console.error('Error fetching incoming webhooks:', error);
+    return c.json({ error: 'Failed to fetch incoming webhooks' }, 500);
   }
 });
 
@@ -255,8 +293,10 @@ app.post('/replay', async (c) => {
     const webhooks = await db.select()
       .from(incomingWebhooks)
       .where(
-        // Using string comparison for SQLite datetime format
-        `created_at >= '${startDate}' AND created_at <= '${endDate}'`
+        and(
+          gte(incomingWebhooks.createdAt, startDate),
+          lte(incomingWebhooks.createdAt, endDate)
+        )
       )
       .orderBy(desc(incomingWebhooks.createdAt));
 

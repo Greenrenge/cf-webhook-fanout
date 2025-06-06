@@ -121,6 +121,15 @@ export class WebhookAPI {
       throw new Error('Failed to replay webhooks');
     }
   }
+
+  async getWebhooks(): Promise<Array<{ id: string; url: string; method: string; createdAt: string }>> {
+    const response = await fetch(`${this.baseUrl}/webhooks`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch webhooks');
+    }
+    const data = await response.json();
+    return data.webhooks;
+  }
 }
 
 export const webhookAPI = new WebhookAPI();
