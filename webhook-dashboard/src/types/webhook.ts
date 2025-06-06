@@ -5,8 +5,8 @@ export interface Endpoint {
   headers: string;
   tenantId?: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface WebhookLog {
@@ -21,7 +21,7 @@ export interface WebhookLog {
   responseBody?: string;
   responseTime?: number;
   tenantId?: string;
-  createdAt: string;
+  createdAt: number;
 }
 
 export interface IncomingWebhook {
@@ -33,5 +33,5 @@ export interface IncomingWebhook {
   sourceIp: string;
   userAgent: string;
   processingStatus: 'pending' | 'completed' | 'failed';
-  createdAt: string;
+  createdAt: number;
 }

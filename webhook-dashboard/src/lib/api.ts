@@ -1,4 +1,5 @@
 import { Endpoint, WebhookLog } from '@/types/webhook';
+import { convertBangkokDateToTimestamp } from './utils';
 
 const WORKER_API_URL = process.env.NEXT_PUBLIC_WORKER_API_URL || 'http://localhost:8787';
 
@@ -105,7 +106,10 @@ export class WebhookAPI {
   }
 
   async replayWebhooksByDateRange(startDate: string, endDate: string, endpointId?: number): Promise<void> {
-    const body: { startDate: string; endDate: string; endpointId?: number } = { startDate, endDate };
+    const body: { startDate: number; endDate: number; endpointId?: number } = {
+      startDate: convertBangkokDateToTimestamp(startDate),
+      endDate: convertBangkokDateToTimestamp(endDate),
+    };
     if (endpointId) {
       body.endpointId = endpointId;
     }
@@ -122,7 +126,7 @@ export class WebhookAPI {
     }
   }
 
-  async getWebhooks(): Promise<Array<{ id: string; url: string; method: string; createdAt: string }>> {
+  async getWebhooks(): Promise<Array<{ id: string; url: string; method: string; createdAt: number }>> {
     const response = await fetch(`${this.baseUrl}/webhooks`);
     if (!response.ok) {
       throw new Error('Failed to fetch webhooks');
