@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Endpoint, WebhookLog } from '@/types/webhook';
+import { Endpoint, WebhookLog, IncomingWebhook } from '@/types/webhook';
 import { WebhookAPI } from '@/lib/api';
 import { WebhookLogDetails } from '@/components/WebhookLogDetails';
 import { formatBangkokDate } from '@/lib/utils';
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const session = useMemo(() => ({ user: { name: 'User' } }), []);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [incomingWebhooks, setIncomingWebhooks] = useState<IncomingWebhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddEndpoint, setShowAddEndpoint] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
@@ -17,27 +18,55 @@ export default function Dashboard() {
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
   const [endpointLogs, setEndpointLogs] = useState<WebhookLog[]>([]);
   const [replayingWebhooks, setReplayingWebhooks] = useState<Set<string>>(new Set());
+  
+  // Pagination state
+  const [webhookLogsPage, setWebhookLogsPage] = useState(0);
+  const [incomingWebhooksPage, setIncomingWebhooksPage] = useState(0);
+  const [clearingLogs, setClearingLogs] = useState(false);
+  const [clearingWebhooks, setClearingWebhooks] = useState(false);
+  const ITEMS_PER_PAGE = 30;
 
   const api = useMemo(() => new WebhookAPI(), []);
+
+  const loadWebhookLogs = useCallback(async (page = 0) => {
+    try {
+      const logsData = await api.getWebhookLogs(ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+      setWebhookLogs(logsData);
+    } catch (error) {
+      console.error('Failed to load webhook logs:', error);
+      setWebhookLogs([]);
+    }
+  }, [api, ITEMS_PER_PAGE]);
+
+  const loadIncomingWebhooks = useCallback(async (page = 0) => {
+    try {
+      const webhooksData = await api.getIncomingWebhooks(ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+      setIncomingWebhooks(webhooksData);
+    } catch (error) {
+      console.error('Failed to load incoming webhooks:', error);
+      setIncomingWebhooks([]);
+    }
+  }, [api, ITEMS_PER_PAGE]);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [endpointsData, logsData] = await Promise.all([
+      const [endpointsData] = await Promise.all([
         api.getEndpoints(),
-        api.getWebhookLogs()
+        loadWebhookLogs(webhookLogsPage),
+        loadIncomingWebhooks(incomingWebhooksPage)
       ]);
       setEndpoints(endpointsData);
-      setWebhookLogs(logsData);
     } catch (error) {
       console.error('Failed to load data:', error);
       // Show empty state when API is unavailable
       setEndpoints([]);
       setWebhookLogs([]);
+      setIncomingWebhooks([]);
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, loadWebhookLogs, loadIncomingWebhooks, webhookLogsPage, incomingWebhooksPage]);
 
   useEffect(() => {
     // Auto-load data since we're simulating a logged-in user
@@ -93,6 +122,49 @@ export default function Dashboard() {
     }
   };
 
+  const handleClearWebhookLogs = async () => {
+    if (!confirm('Are you sure you want to clear all webhook logs? This action cannot be undone.')) return;
+    
+    try {
+      setClearingLogs(true);
+      await api.clearWebhookLogs();
+      setWebhookLogsPage(0);
+      await loadWebhookLogs(0);
+      alert('Webhook logs cleared successfully');
+    } catch (error) {
+      console.error('Failed to clear webhook logs:', error);
+      alert('Failed to clear webhook logs');
+    } finally {
+      setClearingLogs(false);
+    }
+  };
+
+  const handleClearIncomingWebhooks = async () => {
+    if (!confirm('Are you sure you want to clear all incoming webhooks? This action cannot be undone.')) return;
+    
+    try {
+      setClearingWebhooks(true);
+      await api.clearIncomingWebhooks();
+      setIncomingWebhooksPage(0);
+      await loadIncomingWebhooks(0);
+      alert('Incoming webhooks cleared successfully');
+    } catch (error) {
+      console.error('Failed to clear incoming webhooks:', error);
+      alert('Failed to clear incoming webhooks');
+    } finally {
+      setClearingWebhooks(false);
+    }
+  };
+
+  const handleWebhookLogsPageChange = async (newPage: number) => {
+    setWebhookLogsPage(newPage);
+    await loadWebhookLogs(newPage);
+  };
+
+  const handleIncomingWebhooksPageChange = async (newPage: number) => {
+    setIncomingWebhooksPage(newPage);
+    await loadIncomingWebhooks(newPage);
+  };
 
   // Temporarily removing authentication check
   // if (status === 'loading') {
@@ -258,6 +330,15 @@ export default function Dashboard() {
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-medium text-gray-900">Webhook Logs</h2>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleClearWebhookLogs}
+                      disabled={clearingLogs}
+                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {clearingLogs ? 'Clearing...' : 'Clear Logs'}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -306,6 +387,161 @@ export default function Dashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              {/* Pagination Controls */}
+              <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  Page {webhookLogsPage + 1} of {Math.ceil(webhookLogs.length / ITEMS_PER_PAGE)}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleWebhookLogsPageChange(webhookLogsPage - 1)}
+                    disabled={webhookLogsPage === 0}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handleWebhookLogsPageChange(webhookLogsPage + 1)}
+                    disabled={webhookLogs.length < ITEMS_PER_PAGE}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Incoming Webhooks Section */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-medium text-gray-900">Incoming Webhook Logs</h2>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setShowReplay(true)}
+                      className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors"
+                    >
+                      Replay Webhooks
+                    </button>
+                    <button
+                      onClick={() => setShowAddEndpoint(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      Add Endpoint
+                    </button>
+                    <button
+                      onClick={handleClearIncomingWebhooks}
+                      disabled={clearingWebhooks}
+                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {clearingWebhooks ? 'Clearing...' : 'Clear Webhooks'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Method
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Source IP
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User Agent
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {incomingWebhooks.map((webhook) => (
+                      <tr key={webhook.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {webhook.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {webhook.method}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {webhook.sourceIp}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
+                          {webhook.userAgent}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            webhook.processingStatus === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : webhook.processingStatus === 'failed'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {webhook.processingStatus}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatBangkokDate(webhook.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReplayWebhook(webhook.id);
+                            }}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Replay
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // TODO: implement view details
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Pagination Controls */}
+              <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  Page {incomingWebhooksPage + 1} of {Math.ceil(incomingWebhooks.length / ITEMS_PER_PAGE)}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleIncomingWebhooksPageChange(incomingWebhooksPage - 1)}
+                    disabled={incomingWebhooksPage === 0}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => handleIncomingWebhooksPageChange(incomingWebhooksPage + 1)}
+                    disabled={incomingWebhooks.length < ITEMS_PER_PAGE}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>

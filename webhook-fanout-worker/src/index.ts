@@ -211,13 +211,38 @@ app.get('/webhooks', async (c) => {
 	try {
 		const db = createDB(c.env.DB);
 		const limit = parseInt(c.req.query('limit') || '100');
+		const skip = parseInt(c.req.query('skip') || '0');
 
-		const webhooks = await db.select().from(incomingWebhooks).orderBy(desc(incomingWebhooks.createdAt)).limit(limit);
+		const webhooks = await db.select().from(incomingWebhooks).orderBy(desc(incomingWebhooks.createdAt)).limit(limit).offset(skip);
 
 		return c.json({ webhooks });
 	} catch (error) {
 		console.error('Error fetching incoming webhooks:', error);
 		return c.json({ error: 'Failed to fetch incoming webhooks' }, 500);
+	}
+});
+
+// Delete all outgoing webhook logs
+app.delete('/logs', async (c) => {
+	try {
+		const db = createDB(c.env.DB);
+		await db.delete(webhookLogs);
+		return c.json({ message: 'All webhook logs cleared successfully' });
+	} catch (error) {
+		console.error('Error clearing webhook logs:', error);
+		return c.json({ error: 'Failed to clear webhook logs' }, 500);
+	}
+});
+
+// Delete all incoming webhooks
+app.delete('/webhooks', async (c) => {
+	try {
+		const db = createDB(c.env.DB);
+		await db.delete(incomingWebhooks);
+		return c.json({ message: 'All incoming webhooks cleared successfully' });
+	} catch (error) {
+		console.error('Error clearing incoming webhooks:', error);
+		return c.json({ error: 'Failed to clear incoming webhooks' }, 500);
 	}
 });
 

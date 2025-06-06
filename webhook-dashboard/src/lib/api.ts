@@ -1,4 +1,4 @@
-import { Endpoint, WebhookLog } from '@/types/webhook';
+import { Endpoint, WebhookLog, IncomingWebhook } from '@/types/webhook';
 import { convertBangkokDateToTimestamp } from './utils';
 
 const WORKER_API_URL = process.env.NEXT_PUBLIC_WORKER_API_URL || 'http://localhost:8787';
@@ -64,13 +64,40 @@ export class WebhookAPI {
     return data.endpoint;
   }
 
-  async getWebhookLogs(limit = 100): Promise<WebhookLog[]> {
-    const response = await fetch(`${this.baseUrl}/logs?limit=${limit}`);
+  async getWebhookLogs(limit = 100, skip = 0): Promise<WebhookLog[]> {
+    const response = await fetch(`${this.baseUrl}/logs?limit=${limit}&skip=${skip}`);
     if (!response.ok) {
       throw new Error('Failed to fetch webhook logs');
     }
     const data = await response.json();
     return data.logs;
+  }
+
+  async getIncomingWebhooks(limit = 100, skip = 0): Promise<IncomingWebhook[]> {
+    const response = await fetch(`${this.baseUrl}/webhooks?limit=${limit}&skip=${skip}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch incoming webhooks');
+    }
+    const data = await response.json();
+    return data.webhooks;
+  }
+
+  async clearWebhookLogs(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/logs`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to clear webhook logs');
+    }
+  }
+
+  async clearIncomingWebhooks(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/webhooks`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to clear incoming webhooks');
+    }
   }
 
   async getEndpointLogs(endpointUrl: string): Promise<WebhookLog[]> {
@@ -124,15 +151,6 @@ export class WebhookAPI {
     if (!response.ok) {
       throw new Error('Failed to replay webhooks');
     }
-  }
-
-  async getWebhooks(): Promise<Array<{ id: string; url: string; method: string; createdAt: number }>> {
-    const response = await fetch(`${this.baseUrl}/webhooks`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch webhooks');
-    }
-    const data = await response.json();
-    return data.webhooks;
   }
 }
 
