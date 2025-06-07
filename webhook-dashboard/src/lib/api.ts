@@ -22,17 +22,31 @@ export class WebhookAPI {
     return headers;
   }
 
+  private async handleResponse(response: Response): Promise<unknown> {
+    if (response.status === 401) {
+      // Token expired or invalid - trigger re-authentication
+      if (typeof window !== 'undefined') {
+        const { signIn } = await import('next-auth/react');
+        signIn('keycloak');
+      }
+      throw new Error('Authentication required');
+    }
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+    
+    return response.json();
+  }
+
   async getEndpoints(token?: string): Promise<Endpoint[]> {
     try {
       const response = await fetch(`${this.baseUrl}/config/endpoints`, {
         headers: this.getAuthHeaders(token),
       });
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch endpoints: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
+      const data = await this.handleResponse(response) as { endpoints: Endpoint[] };
       return data.endpoints;
     } catch (error) {
       throw error;
@@ -45,10 +59,7 @@ export class WebhookAPI {
       headers: this.getAuthHeaders(token),
       body: JSON.stringify(endpoint),
     });
-    if (!response.ok) {
-      throw new Error('Failed to create endpoint');
-    }
-    const data = await response.json();
+    const data = await this.handleResponse(response) as { endpoint: Endpoint };
     return data.endpoint;
   }
 
@@ -57,9 +68,7 @@ export class WebhookAPI {
       method: 'DELETE',
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to delete endpoint');
-    }
+    await this.handleResponse(response);
   }
 
   async updateEndpoint(id: number, updates: Partial<Endpoint>, token?: string): Promise<Endpoint> {
@@ -68,10 +77,7 @@ export class WebhookAPI {
       headers: this.getAuthHeaders(token),
       body: JSON.stringify(updates),
     });
-    if (!response.ok) {
-      throw new Error('Failed to update endpoint');
-    }
-    const data = await response.json();
+    const data = await this.handleResponse(response) as { endpoint: Endpoint };
     return data.endpoint;
   }
 
@@ -79,10 +85,7 @@ export class WebhookAPI {
     const response = await fetch(`${this.baseUrl}/logs?limit=${limit}&skip=${skip}`, {
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to fetch webhook logs');
-    }
-    const data = await response.json();
+    const data = await this.handleResponse(response) as { logs: WebhookLog[] };
     return data.logs;
   }
 
@@ -90,10 +93,7 @@ export class WebhookAPI {
     const response = await fetch(`${this.baseUrl}/webhooks?limit=${limit}&skip=${skip}`, {
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to fetch incoming webhooks');
-    }
-    const data = await response.json();
+    const data = await this.handleResponse(response) as { webhooks: IncomingWebhook[] };
     return data.webhooks;
   }
 
@@ -102,9 +102,7 @@ export class WebhookAPI {
       method: 'DELETE',
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to clear webhook logs');
-    }
+    await this.handleResponse(response);
   }
 
   async clearIncomingWebhooks(token?: string): Promise<void> {
@@ -112,19 +110,14 @@ export class WebhookAPI {
       method: 'DELETE',
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to clear incoming webhooks');
-    }
+    await this.handleResponse(response);
   }
 
   async getEndpointLogs(endpointUrl: string, token?: string): Promise<WebhookLog[]> {
     const response = await fetch(`${this.baseUrl}/logs?endpoint=${encodeURIComponent(endpointUrl)}`, {
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to fetch endpoint logs');
-    }
-    const data = await response.json();
+    const data = await this.handleResponse(response) as { logs: WebhookLog[] };
     return data.logs;
   }
 
@@ -132,10 +125,7 @@ export class WebhookAPI {
     const response = await fetch(`${this.baseUrl}/logs?endpointId=${endpointId}`, {
       headers: this.getAuthHeaders(token),
     });
-    if (!response.ok) {
-      throw new Error('Failed to fetch endpoint logs');
-    }
-    const data = await response.json();
+    const data = await this.handleResponse(response) as { logs: WebhookLog[] };
     return data.logs;
   }
 
@@ -146,9 +136,7 @@ export class WebhookAPI {
       headers: this.getAuthHeaders(token),
       body: JSON.stringify(body),
     });
-    if (!response.ok) {
-      throw new Error('Failed to replay webhook');
-    }
+    await this.handleResponse(response);
   }
 
   async replayWebhooksByDateRange(startDate: string, endDate: string, endpointId?: number, token?: string): Promise<void> {
@@ -165,9 +153,7 @@ export class WebhookAPI {
       headers: this.getAuthHeaders(token),
       body: JSON.stringify(body),
     });
-    if (!response.ok) {
-      throw new Error('Failed to replay webhooks');
-    }
+    await this.handleResponse(response);
   }
 }
 
