@@ -63,7 +63,7 @@ app.post('/config/endpoints', async (c) => {
 		const db = createDB(c.env.DB);
 		const body = await c.req.json();
 
-		const { url, isPrimary = false, headers = {}, tenantId } = body;
+		const { url, isPrimary = false, headers = {} } = body;
 
 		if (!url) {
 			return c.json({ error: 'URL is required' }, 400);
@@ -88,7 +88,6 @@ app.post('/config/endpoints', async (c) => {
 				url,
 				isPrimary,
 				headers: headersString,
-				tenantId,
 			})
 			.returning();
 
@@ -106,7 +105,7 @@ app.patch('/config/endpoints/:id', async (c) => {
 		const id = parseInt(c.req.param('id'));
 		const body = await c.req.json();
 
-		const { url, isPrimary, headers, tenantId, isActive } = body;
+		const { url, isPrimary, headers, isActive } = body;
 
 		// If setting as primary, unset all other primary endpoints
 		if (isPrimary === true) {
@@ -124,7 +123,6 @@ app.patch('/config/endpoints/:id', async (c) => {
 				updateData.headers = JSON.stringify(headers);
 			}
 		}
-		if (tenantId !== undefined) updateData.tenantId = tenantId;
 		if (isActive !== undefined) updateData.isActive = isActive;
 
 		updateData.updatedAt = new Date().toISOString();

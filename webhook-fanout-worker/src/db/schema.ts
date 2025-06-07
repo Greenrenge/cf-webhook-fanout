@@ -6,7 +6,6 @@ export const endpoints = sqliteTable('endpoints', {
 	url: text('url').notNull(),
 	isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
 	headers: text('headers'), // JSON string of custom headers
-	tenantId: text('tenant_id'),
 	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 	createdAt: integer('created_at')
 		.notNull()
@@ -28,7 +27,6 @@ export const webhookLogs = sqliteTable('webhook_logs', {
 	statusCode: integer('status_code'),
 	responseBody: text('response_body'),
 	responseTime: integer('response_time'), // milliseconds
-	tenantId: text('tenant_id'),
 	createdAt: integer('created_at')
 		.notNull()
 		.$defaultFn(() => Date.now()),
@@ -40,7 +38,6 @@ export const incomingWebhooks = sqliteTable('incoming_webhooks', {
 	method: text('method').notNull(),
 	headers: text('headers'), // JSON string
 	body: text('body'),
-	tenantId: text('tenant_id'),
 	sourceIp: text('source_ip'),
 	userAgent: text('user_agent'),
 	processingStatus: text('processing_status').notNull().default('pending'), // 'pending' | 'completed' | 'failed'
