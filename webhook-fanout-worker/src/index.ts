@@ -8,9 +8,84 @@ import { eq, desc, and, gte, lte } from 'drizzle-orm';
 type Bindings = {
 	DB: D1Database;
 	WEBHOOK_PATH: string;
+	KEYCLOAK_ISSUER: string;
+	KEYCLOAK_CLIENT_ID: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// JWT validation middleware
+async function validateJWT(c: any, next: any) {
+	// Skip validation for the main webhook endpoint
+	const path = c.req.path;
+	const method = c.req.method;
+	
+	// Allow POST requests to /webhook without authentication
+	if (method === 'POST' && path.startsWith('/webhook')) {
+		return next();
+	}
+	
+	// Allow OPTIONS requests (CORS preflight)
+	if (method === 'OPTIONS') {
+		return next();
+	}
+	
+	// Allow health check
+	if (path === '/' || path === '/init') {
+		return next();
+	}
+	
+	// For all other routes, validate JWT
+	const authHeader = c.req.header('Authorization');
+	if (!authHeader || !authHeader.startsWith('Bearer ')) {
+		return c.json({ error: 'Missing or invalid Authorization header' }, 401);
+	}
+	
+	const token = authHeader.replace('Bearer ', '');
+	
+	try {
+		// Basic JWT structure validation
+		const parts = token.split('.');
+		if (parts.length !== 3) {
+			return c.json({ error: 'Invalid JWT structure' }, 401);
+		}
+		
+		// Decode the header and payload (without verification for now)
+		try {
+			const header = JSON.parse(atob(parts[0]));
+			const payload = JSON.parse(atob(parts[1]));
+			
+			// Check if token has expired
+			const now = Math.floor(Date.now() / 1000);
+			if (payload.exp && payload.exp < now) {
+				return c.json({ error: 'Token has expired' }, 401);
+			}
+			
+			// Check issuer if available
+			const expectedIssuer = c.env.KEYCLOAK_ISSUER;
+			if (expectedIssuer && payload.iss && payload.iss !== expectedIssuer) {
+				return c.json({ error: 'Invalid token issuer' }, 401);
+			}
+			
+			// Check audience if available
+			const expectedClientId = c.env.KEYCLOAK_CLIENT_ID;
+			if (expectedClientId && payload.aud && !payload.aud.includes(expectedClientId)) {
+				return c.json({ error: 'Invalid token audience' }, 401);
+			}
+			
+		} catch (decodeError) {
+			return c.json({ error: 'Invalid JWT format' }, 401);
+		}
+		
+		// TODO: Add proper JWT signature verification against Keycloak public key
+		// For production use, implement JWKS fetching and signature verification
+		
+		return next();
+	} catch (error) {
+		console.error('JWT validation error:', error);
+		return c.json({ error: 'Token validation failed' }, 401);
+	}
+}
 
 // Middleware
 app.use('*', logger());
@@ -22,6 +97,9 @@ app.use(
 		allowHeaders: ['Content-Type', 'Authorization'],
 	}),
 );
+
+// Apply JWT validation middleware
+app.use('*', validateJWT);
 
 // Health check
 app.get('/', (c) => {

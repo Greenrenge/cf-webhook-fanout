@@ -10,9 +10,23 @@ export class WebhookAPI {
     this.baseUrl = WORKER_API_URL;
   }
 
-  async getEndpoints(): Promise<Endpoint[]> {
+  private getAuthHeaders(token?: string): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+  }
+
+  async getEndpoints(token?: string): Promise<Endpoint[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/config/endpoints`);
+      const response = await fetch(`${this.baseUrl}/config/endpoints`, {
+        headers: this.getAuthHeaders(token),
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch endpoints: ${response.status} ${response.statusText}`);
@@ -25,12 +39,10 @@ export class WebhookAPI {
     }
   }
 
-  async createEndpoint(endpoint: Omit<Endpoint, 'id' | 'createdAt' | 'updatedAt'>): Promise<Endpoint> {
+  async createEndpoint(endpoint: Omit<Endpoint, 'id' | 'createdAt' | 'updatedAt'>, token?: string): Promise<Endpoint> {
     const response = await fetch(`${this.baseUrl}/config/endpoints`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(endpoint),
     });
     if (!response.ok) {
@@ -40,21 +52,20 @@ export class WebhookAPI {
     return data.endpoint;
   }
 
-  async deleteEndpoint(id: number): Promise<void> {
+  async deleteEndpoint(id: number, token?: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/config/endpoints/${id}`, {
       method: 'DELETE',
+      headers: this.getAuthHeaders(token),
     });
     if (!response.ok) {
       throw new Error('Failed to delete endpoint');
     }
   }
 
-  async updateEndpoint(id: number, updates: Partial<Endpoint>): Promise<Endpoint> {
+  async updateEndpoint(id: number, updates: Partial<Endpoint>, token?: string): Promise<Endpoint> {
     const response = await fetch(`${this.baseUrl}/config/endpoints/${id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(updates),
     });
     if (!response.ok) {
@@ -64,8 +75,10 @@ export class WebhookAPI {
     return data.endpoint;
   }
 
-  async getWebhookLogs(limit = 100, skip = 0): Promise<WebhookLog[]> {
-    const response = await fetch(`${this.baseUrl}/logs?limit=${limit}&skip=${skip}`);
+  async getWebhookLogs(limit = 100, skip = 0, token?: string): Promise<WebhookLog[]> {
+    const response = await fetch(`${this.baseUrl}/logs?limit=${limit}&skip=${skip}`, {
+      headers: this.getAuthHeaders(token),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch webhook logs');
     }
@@ -73,8 +86,10 @@ export class WebhookAPI {
     return data.logs;
   }
 
-  async getIncomingWebhooks(limit = 100, skip = 0): Promise<IncomingWebhook[]> {
-    const response = await fetch(`${this.baseUrl}/webhooks?limit=${limit}&skip=${skip}`);
+  async getIncomingWebhooks(limit = 100, skip = 0, token?: string): Promise<IncomingWebhook[]> {
+    const response = await fetch(`${this.baseUrl}/webhooks?limit=${limit}&skip=${skip}`, {
+      headers: this.getAuthHeaders(token),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch incoming webhooks');
     }
@@ -82,26 +97,30 @@ export class WebhookAPI {
     return data.webhooks;
   }
 
-  async clearWebhookLogs(): Promise<void> {
+  async clearWebhookLogs(token?: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/logs`, {
       method: 'DELETE',
+      headers: this.getAuthHeaders(token),
     });
     if (!response.ok) {
       throw new Error('Failed to clear webhook logs');
     }
   }
 
-  async clearIncomingWebhooks(): Promise<void> {
+  async clearIncomingWebhooks(token?: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/webhooks`, {
       method: 'DELETE',
+      headers: this.getAuthHeaders(token),
     });
     if (!response.ok) {
       throw new Error('Failed to clear incoming webhooks');
     }
   }
 
-  async getEndpointLogs(endpointUrl: string): Promise<WebhookLog[]> {
-    const response = await fetch(`${this.baseUrl}/logs?endpoint=${encodeURIComponent(endpointUrl)}`);
+  async getEndpointLogs(endpointUrl: string, token?: string): Promise<WebhookLog[]> {
+    const response = await fetch(`${this.baseUrl}/logs?endpoint=${encodeURIComponent(endpointUrl)}`, {
+      headers: this.getAuthHeaders(token),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch endpoint logs');
     }
@@ -109,8 +128,10 @@ export class WebhookAPI {
     return data.logs;
   }
 
-  async getWebhookLogsByEndpoint(endpointId: number): Promise<WebhookLog[]> {
-    const response = await fetch(`${this.baseUrl}/logs?endpointId=${endpointId}`);
+  async getWebhookLogsByEndpoint(endpointId: number, token?: string): Promise<WebhookLog[]> {
+    const response = await fetch(`${this.baseUrl}/logs?endpointId=${endpointId}`, {
+      headers: this.getAuthHeaders(token),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch endpoint logs');
     }
@@ -118,13 +139,11 @@ export class WebhookAPI {
     return data.logs;
   }
 
-  async replayWebhookById(webhookId: string, endpointId?: number): Promise<void> {
+  async replayWebhookById(webhookId: string, endpointId?: number, token?: string): Promise<void> {
     const body = endpointId ? { endpointId } : {};
     const response = await fetch(`${this.baseUrl}/replay/${webhookId}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(body),
     });
     if (!response.ok) {
@@ -132,7 +151,7 @@ export class WebhookAPI {
     }
   }
 
-  async replayWebhooksByDateRange(startDate: string, endDate: string, endpointId?: number): Promise<void> {
+  async replayWebhooksByDateRange(startDate: string, endDate: string, endpointId?: number, token?: string): Promise<void> {
     const body: { startDate: number; endDate: number; endpointId?: number } = {
       startDate: convertBangkokDateToTimestamp(startDate),
       endDate: convertBangkokDateToTimestamp(endDate),
@@ -143,9 +162,7 @@ export class WebhookAPI {
     
     const response = await fetch(`${this.baseUrl}/replay`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getAuthHeaders(token),
       body: JSON.stringify(body),
     });
     if (!response.ok) {

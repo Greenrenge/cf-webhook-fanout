@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { Endpoint, WebhookLog, IncomingWebhook } from '@/types/webhook';
 import { WebhookAPI } from '@/lib/api';
 import { WebhookLogDetails } from '@/components/WebhookLogDetails';
 import { formatBangkokDate } from '@/lib/utils';
 
 export default function Dashboard() {
-  const session = useMemo(() => ({ user: { name: 'User' } }), []);
+  const { data: session, status } = useSession();
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
   const [incomingWebhooks, setIncomingWebhooks] = useState<IncomingWebhook[]>([]);
@@ -36,29 +37,44 @@ export default function Dashboard() {
 
   const loadWebhookLogs = useCallback(async (page = 0) => {
     try {
-      const logsData = await api.getWebhookLogs(ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      const logsData = await api.getWebhookLogs(ITEMS_PER_PAGE, page * ITEMS_PER_PAGE, token);
       setWebhookLogs(logsData);
     } catch (error) {
       console.error('Failed to load webhook logs:', error);
       setWebhookLogs([]);
     }
-  }, [api, ITEMS_PER_PAGE]);
+  }, [api, ITEMS_PER_PAGE, session]);
 
   const loadIncomingWebhooks = useCallback(async (page = 0) => {
     try {
-      const webhooksData = await api.getIncomingWebhooks(ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      const webhooksData = await api.getIncomingWebhooks(ITEMS_PER_PAGE, page * ITEMS_PER_PAGE, token);
       setIncomingWebhooks(webhooksData);
     } catch (error) {
       console.error('Failed to load incoming webhooks:', error);
       setIncomingWebhooks([]);
     }
-  }, [api, ITEMS_PER_PAGE]);
+  }, [api, ITEMS_PER_PAGE, session]);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
       const [endpointsData] = await Promise.all([
-        api.getEndpoints(),
+        api.getEndpoints(token),
         loadWebhookLogs(webhookLogsPage),
         loadIncomingWebhooks(incomingWebhooksPage)
       ]);
@@ -72,7 +88,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [api, loadWebhookLogs, loadIncomingWebhooks, webhookLogsPage, incomingWebhooksPage]);
+  }, [api, loadWebhookLogs, loadIncomingWebhooks, webhookLogsPage, incomingWebhooksPage, session]);
 
   useEffect(() => {
     // Auto-load data since we're simulating a logged-in user
@@ -82,7 +98,12 @@ export default function Dashboard() {
   const handleEndpointClick = async (endpoint: Endpoint) => {
     try {
       setSelectedEndpoint(endpoint);
-      const logs = await api.getWebhookLogsByEndpoint(endpoint.id);
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      const logs = await api.getWebhookLogsByEndpoint(endpoint.id, token);
       setEndpointLogs(logs);
       setShowEndpointLogs(true);
     } catch (error) {
@@ -92,7 +113,12 @@ export default function Dashboard() {
 
   const togglePrimary = async (endpoint: Endpoint) => {
     try {
-      await api.updateEndpoint(endpoint.id, { isPrimary: !endpoint.isPrimary });
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      await api.updateEndpoint(endpoint.id, { isPrimary: !endpoint.isPrimary }, token);
       await loadData();
     } catch (error) {
       console.error('Failed to update endpoint:', error);
@@ -102,7 +128,12 @@ export default function Dashboard() {
   const deleteEndpoint = async (id: number) => {
     if (confirm('Are you sure you want to delete this endpoint?')) {
       try {
-        await api.deleteEndpoint(id);
+        if (!session?.accessToken) {
+          console.error('No access token available');
+          return;
+        }
+        const token = session.accessToken;
+        await api.deleteEndpoint(id, token);
         await loadData();
       } catch (error) {
         console.error('Failed to delete endpoint:', error);
@@ -113,7 +144,12 @@ export default function Dashboard() {
   const handleReplayWebhook = async (webhookId: string, endpointId?: number) => {
     try {
       setReplayingWebhooks(prev => new Set(prev).add(`${webhookId}_${endpointId || 'all'}`));
-      await api.replayWebhookById(webhookId, endpointId);
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      await api.replayWebhookById(webhookId, endpointId, token);
       alert(`Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`);
       await loadData(); // Refresh logs to show replay
     } catch (error) {
@@ -133,7 +169,12 @@ export default function Dashboard() {
     
     try {
       setClearingLogs(true);
-      await api.clearWebhookLogs();
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      await api.clearWebhookLogs(token);
       setWebhookLogsPage(0);
       await loadWebhookLogs(0);
       alert('Webhook logs cleared successfully');
@@ -150,7 +191,12 @@ export default function Dashboard() {
     
     try {
       setClearingWebhooks(true);
-      await api.clearIncomingWebhooks();
+      if (!session?.accessToken) {
+        console.error('No access token available');
+        return;
+      }
+      const token = session.accessToken;
+      await api.clearIncomingWebhooks(token);
       setIncomingWebhooksPage(0);
       await loadIncomingWebhooks(0);
       alert('Incoming webhooks cleared successfully');
@@ -177,26 +223,37 @@ export default function Dashboard() {
   //   return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   // }
 
-  // if (!session) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-  //       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
-  //         <h1 className="text-2xl font-bold text-center text-gray-900 mb-6">
-  //           Webhook Dashboard
-  //         </h1>
-  //         <p className="text-gray-600 text-center mb-8">
-  //           Please sign in to access the dashboard
-  //         </p>
-  //         <button
-  //           onClick={() => signIn('keycloak')}
-  //           className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-  //         >
-  //           Sign in with Keycloak
-  //         </button>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
+          <h1 className="text-2xl font-bold text-center text-gray-900 mb-6">
+            Webhook Dashboard
+          </h1>
+          <p className="text-gray-600 text-center mb-8">
+            Please sign in to access the dashboard
+          </p>
+          <button
+            onClick={() => signIn('keycloak')}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Sign in with Keycloak
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -208,7 +265,7 @@ export default function Dashboard() {
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {session.user?.name}</span>
               <button
-                onClick={() => {/* TODO: implement sign out */}}
+                onClick={() => signOut()}
                 className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors"
               >
                 Sign out
@@ -563,6 +620,7 @@ export default function Dashboard() {
           loadData();
         }}
         api={api}
+        token={session?.accessToken || ''}
       />
 
       {/* Replay Modal */}
@@ -571,6 +629,7 @@ export default function Dashboard() {
         onClose={() => setShowReplay(false)}
         api={api}
         endpoints={endpoints}
+        token={session?.accessToken || ''}
       />
 
       {/* Endpoint Logs Modal */}
@@ -602,11 +661,12 @@ export default function Dashboard() {
 }
 
 // Add Endpoint Modal Component
-function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
+function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   api: WebhookAPI;
+  token?: string;
 }) {
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState('');
@@ -622,7 +682,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
         headers,
         isPrimary,
         isActive: true,
-      });
+      }, token);
       setUrl('');
       setHeaders('');
       setIsPrimary(false);
@@ -701,11 +761,12 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api }: {
 }
 
 // Replay Modal Component
-function ReplayModal({ isOpen, onClose, api, endpoints }: {
+function ReplayModal({ isOpen, onClose, api, endpoints, token }: {
   isOpen: boolean;
   onClose: () => void;
   api: WebhookAPI;
   endpoints: Endpoint[];
+  token?: string;
 }) {
   const [replayType, setReplayType] = useState<'id' | 'dateRange'>('id');
   const [webhookId, setWebhookId] = useState('');
@@ -719,9 +780,9 @@ function ReplayModal({ isOpen, onClose, api, endpoints }: {
     try {
       setLoading(true);
       if (replayType === 'id') {
-        await api.replayWebhookById(webhookId, selectedEndpoint);
+        await api.replayWebhookById(webhookId, selectedEndpoint, token);
       } else {
-        await api.replayWebhooksByDateRange(startDate, endDate, selectedEndpoint);
+        await api.replayWebhooksByDateRange(startDate, endDate, selectedEndpoint, token);
       }
       alert(`Replay initiated successfully${selectedEndpoint ? ` to endpoint ${selectedEndpoint}` : ' to all endpoints'}`);
       onClose();
