@@ -352,5 +352,3 @@ npx wrangler pages deployment list --project-name webhook-dashboard
 - [ ] Custom domains configured (if needed)
 
 ---
-
-*For support or questions, refer to [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/) and [Cloudflare Pages Documentation](https://developers.cloudflare.com/pages/).*
