@@ -9,6 +9,8 @@ export const authConfig: NextAuthConfig = {
       issuer: process.env.KEYCLOAK_ISSUER!,
     })
   ],
+  debug: process.env.NODE_ENV === "development",
+  trustHost: true,
   callbacks: {
     async jwt({ token, account }) {
       if (account) {
