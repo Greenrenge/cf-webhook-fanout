@@ -124,8 +124,8 @@ A production-ready serverless webhook proxy service built on Cloudflare Workers 
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/your-org/webhook-fanout-service.git
-cd webhook-fanout-service
+git clone https://github.com/greenrenge/cf-webhook-fanout.git
+cd cf-webhook-fanout
 ```
 
 ### 2. Install Dependencies
