@@ -23,6 +23,7 @@
 		"@types/node": "^22.15.30",
 		"@typescript-eslint/eslint-plugin": "^8.0.0",
 		"@typescript-eslint/parser": "^8.0.0",
+		"drizzle-kit": "^0.31.1",
 		"eslint": "^9.0.0",
 		"prettier": "^3.3.0",
 		"typescript": "^5.5.2",
@@ -30,7 +31,6 @@
 		"wrangler": "^4.19.1"
 	},
 	"dependencies": {
-		"drizzle-kit": "^0.31.1",
 		"drizzle-orm": "^0.44.2",
 		"hono": "^4.7.11"
 	}
