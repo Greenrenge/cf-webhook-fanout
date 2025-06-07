@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Webhook Dashboard
 
-## Getting Started
+A Next.js-based management dashboard for the Webhook Fanout Service, providing real-time monitoring, endpoint management, and webhook replay capabilities.
 
-First, run the development server:
+## Features
+
+- **Real-time Webhook Monitoring**: Live view of incoming webhooks and processing status
+- **Endpoint Management**: Full CRUD interface for managing webhook endpoints
+- **Interactive Logs**: Expandable log entries with formatted JSON and headers
+- **Bulk Operations**: Select and replay multiple webhooks simultaneously  
+- **Pagination**: Efficient browsing of large webhook histories
+- **Authentication**: Secure access with Keycloak/NextAuth integration
+
+## Authentication with Keycloak
+
+The dashboard uses **Keycloak** for enterprise-grade authentication:
+
+### Features:
+- **Single Sign-On (SSO)**: Centralized authentication across your organization
+- **Role-based Access Control**: Manage user permissions through Keycloak roles
+- **Session Management**: Secure login/logout with automatic token refresh
+- **Multi-factor Authentication**: Optional MFA support
+- **User Management**: Centralized user accounts and password policies
+
+### Setup Requirements:
+1. **Keycloak Instance**: Running Keycloak server (v15+ recommended)
+2. **Client Configuration**: OpenID Connect client in your Keycloak realm
+3. **Environment Variables**: Keycloak endpoints and credentials in `.env.local`
+4. **Redirect URIs**: Properly configured callback URLs
+
+See the main [README.md](../README.md) for detailed Keycloak setup instructions.
+
+## Quick Start
+
+See the main [README.md](../README.md) for complete setup and deployment instructions.
+
+### Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Set up environment variables (see ../README.md)
+cp .env.example .env.local
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to access the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Build for Cloudflare Pages
+npm run pages:build
 
-## Learn More
+# Deploy to Cloudflare Pages
+npx wrangler pages deploy .vercel/output/static --project-name webhook-dashboard
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Framework**: Next.js 15 with App Router
+- **Authentication**: NextAuth.js v5 with Keycloak provider
+- **Styling**: Tailwind CSS
+- **Deployment**: Cloudflare Pages with Edge Runtime
+- **TypeScript**: Full type safety
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Integration
 
-## Deploy on Vercel
+The dashboard integrates with the webhook worker API for:
+- Endpoint configuration management
+- Webhook log retrieval and analysis
+- Webhook replay operations
+- Real-time status monitoring
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For complete documentation, see the main [README.md](../README.md).
