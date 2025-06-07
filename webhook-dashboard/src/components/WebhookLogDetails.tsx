@@ -34,10 +34,10 @@ export function WebhookLogDetails({ log, onReplay, showUrl, endpoints = [], isRe
         onClick={() => setExpanded(!expanded)}
         className="hover:bg-gray-50 cursor-pointer"
       >
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono hidden sm:table-cell">
           {log.id}
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-900 font-mono">
+        <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-900 font-mono hidden md:table-cell">
           {log.webhookId || 'N/A'}
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
@@ -50,7 +50,7 @@ export function WebhookLogDetails({ log, onReplay, showUrl, endpoints = [], isRe
           </span>
         </td>
         {showUrl && log.endpointUrl && (
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          <td className="px-6 py-4 text-sm text-gray-900 hidden lg:table-cell">
             <a 
               href={log.endpointUrl} 
               target="_blank" 
@@ -73,7 +73,7 @@ export function WebhookLogDetails({ log, onReplay, showUrl, endpoints = [], isRe
             {log.statusCode || 'Error'}
           </span>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        <td className="px-6 py-4 text-sm text-gray-500">
           {formatBangkokTime(log.createdAt)}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
