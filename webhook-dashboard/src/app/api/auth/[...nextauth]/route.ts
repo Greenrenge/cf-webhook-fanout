@@ -1,7 +1,5 @@
-import NextAuth from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { handlers } from "@/lib/auth"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const handler = (NextAuth as any)(authOptions)
+export const runtime = 'edge'
 
-export { handler as GET, handler as POST }
+export const { GET, POST } = handlers

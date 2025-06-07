@@ -1,25 +1,29 @@
-import KeycloakProvider from "next-auth/providers/keycloak"
+import NextAuth, { NextAuthConfig } from "next-auth"
+import Keycloak from "next-auth/providers/keycloak"
 
-export const authOptions = {
+export const authConfig: NextAuthConfig = {
   providers: [
-    KeycloakProvider({
+    Keycloak({
       clientId: process.env.KEYCLOAK_CLIENT_ID!,
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
       issuer: process.env.KEYCLOAK_ISSUER!,
     })
   ],
   callbacks: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async jwt({ token, account }: any) {
+    async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token
       }
       return token
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async session({ session, token }: any) {
-      session.accessToken = token.accessToken as string
+    async session({ session, token }) {
+      // Add the access token to the session
+      if (token.accessToken) {
+        session.accessToken = token.accessToken as string
+      }
       return session
     },
   },
 }
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig)
