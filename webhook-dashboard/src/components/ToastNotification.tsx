@@ -20,7 +20,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ toast, onClose })
   };
 
   return (
-    <div className={`${baseStyle} ${typeStyles[toast.type]} mb-2`}>
+    <div className={`${baseStyle} ${typeStyles[toast.type]} mb-2`} role="alert" aria-live="assertive">
       <span>{toast.message}</span>
       <button
         onClick={() => onClose(toast.id)}
