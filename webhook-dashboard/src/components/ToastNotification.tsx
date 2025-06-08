@@ -25,6 +25,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ toast, onClose })
       <button
         onClick={() => onClose(toast.id)}
         className="ml-4 text-white hover:text-gray-200"
+        aria-label="Close notification"
       >
         &times;
       </button>
