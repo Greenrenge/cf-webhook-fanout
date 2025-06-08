@@ -6,8 +6,10 @@ import { Endpoint, WebhookLog, IncomingWebhook } from '@/types/webhook';
 import { WebhookAPI } from '@/lib/api';
 import { WebhookLogDetails } from '@/components/WebhookLogDetails';
 import { formatBangkokDate } from '@/lib/utils';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function Dashboard() {
+  const { addToast } = useToast();
   const { data: session, status } = useSession();
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
@@ -150,11 +152,11 @@ export default function Dashboard() {
       }
       const token = session.accessToken;
       await api.replayWebhookById(webhookId, endpointId, token);
-      alert(`Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`);
+      addToast(`Webhook replayed successfully${endpointId ? ` to endpoint ${endpointId}` : ' to all endpoints'}`, 'success');
       await loadData(); // Refresh logs to show replay
     } catch (error) {
       console.error('Failed to replay webhook:', error);
-      alert('Failed to replay webhook');
+      addToast('Failed to replay webhook', 'error');
     } finally {
       setReplayingWebhooks(prev => {
         const next = new Set(prev);
@@ -177,10 +179,10 @@ export default function Dashboard() {
       await api.clearWebhookLogs(token);
       setWebhookLogsPage(0);
       await loadWebhookLogs(0);
-      alert('Webhook logs cleared successfully');
+      addToast('Webhook logs cleared successfully', 'success');
     } catch (error) {
       console.error('Failed to clear webhook logs:', error);
-      alert('Failed to clear webhook logs');
+      addToast('Failed to clear webhook logs', 'error');
     } finally {
       setClearingLogs(false);
     }
@@ -199,10 +201,10 @@ export default function Dashboard() {
       await api.clearIncomingWebhooks(token);
       setIncomingWebhooksPage(0);
       await loadIncomingWebhooks(0);
-      alert('Incoming webhooks cleared successfully');
+      addToast('Incoming webhooks cleared successfully', 'success');
     } catch (error) {
       console.error('Failed to clear incoming webhooks:', error);
-      alert('Failed to clear incoming webhooks');
+      addToast('Failed to clear incoming webhooks', 'error');
     } finally {
       setClearingWebhooks(false);
     }
@@ -306,19 +308,19 @@ export default function Dashboard() {
           <div className="space-y-8">
             {/* Endpoints Section */}
             <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:justify-between sm:items-center">
                   <h2 className="text-lg font-medium text-gray-900">Endpoints</h2>
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3 mt-3 sm:mt-0 w-full sm:w-auto">
                     <button
                       onClick={() => setShowReplay(true)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors"
+                      className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors w-full sm:w-auto"
                     >
                       Replay Webhooks
                     </button>
                     <button
                       onClick={() => setShowAddEndpoint(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors w-full sm:w-auto"
                     >
                       Add Endpoint
                     </button>
@@ -329,7 +331,7 @@ export default function Dashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                         ID
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -341,7 +343,7 @@ export default function Dashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Primary
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                         Created
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -356,7 +358,7 @@ export default function Dashboard() {
                         onClick={() => handleEndpointClick(endpoint)}
                         className="hover:bg-gray-50 cursor-pointer"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                           {endpoint.id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -380,7 +382,7 @@ export default function Dashboard() {
                             {endpoint.isPrimary ? 'Primary' : 'Secondary'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
                           {formatBangkokDate(endpoint.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
@@ -412,14 +414,14 @@ export default function Dashboard() {
 
             {/* Incoming Webhooks Section */}
             <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col items-start space-y-3 sm:flex-row sm:space-y-0 sm:justify-between sm:items-center">
                   <h2 className="text-lg font-medium text-blue-800">Incoming Webhook Logs</h2>
-                  <div className="flex space-x-3">
+                  <div className="flex space-x-3 w-full sm:w-auto">
                     <button
                       onClick={handleClearIncomingWebhooks}
                       disabled={clearingWebhooks}
-                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
                     >
                       {clearingWebhooks ? 'Clearing...' : 'Clear Webhooks'}
                     </button>
@@ -430,7 +432,7 @@ export default function Dashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                         ID
                       </th>
                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -439,10 +441,10 @@ export default function Dashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Method
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                         Source IP
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                         User Agent
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -459,7 +461,7 @@ export default function Dashboard() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {incomingWebhooks.map((webhook) => (
                       <tr key={webhook.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                           {webhook.id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -470,10 +472,10 @@ export default function Dashboard() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {webhook.method}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
                           {webhook.sourceIp}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate hidden lg:table-cell">
                           {webhook.userAgent}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -517,7 +519,7 @@ export default function Dashboard() {
                 </table>
               </div>
               {/* Pagination Controls */}
-              <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
+              <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-t border-gray-200">
                 <div className="text-sm text-gray-500">
                   Page {incomingWebhooksPage + 1} • Showing {incomingWebhooks.length} items
                 </div>
@@ -544,14 +546,14 @@ export default function Dashboard() {
 
             {/* Webhook Logs Section */}
             <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col items-start space-y-3 sm:flex-row sm:space-y-0 sm:justify-between sm:items-center">
                   <h2 className="text-lg font-medium text-green-800">Outgoing Webhook Logs</h2>
-                  <div className="flex space-x-3">
+                  <div className="flex space-x-3 w-full sm:w-auto">
                     <button
                       onClick={handleClearWebhookLogs}
                       disabled={clearingLogs}
-                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+                      className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors disabled:opacity-50 w-full sm:w-auto"
                     >
                       {clearingLogs ? 'Clearing...' : 'Clear Logs'}
                     </button>
@@ -562,16 +564,16 @@ export default function Dashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                         ID
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                         Webhook ID
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Direction
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                         Endpoint
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -606,7 +608,7 @@ export default function Dashboard() {
                 </table>
               </div>
               {/* Pagination Controls */}
-              <div className="px-6 py-4 flex justify-between items-center border-t border-gray-200">
+              <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-t border-gray-200">
                 <div className="text-sm text-gray-500">
                   Page {webhookLogsPage + 1} • Showing {webhookLogs.length} items
                 </div>
@@ -643,6 +645,7 @@ export default function Dashboard() {
         }}
         api={api}
         token={session?.accessToken || ''}
+        addToast={addToast}
       />
 
       {/* Replay Modal */}
@@ -652,6 +655,7 @@ export default function Dashboard() {
         api={api}
         endpoints={endpoints}
         token={session?.accessToken || ''}
+        addToast={addToast}
       />
 
       {/* Endpoint Logs Modal */}
@@ -683,13 +687,15 @@ export default function Dashboard() {
 }
 
 // Add Endpoint Modal Component
-function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
+function AddEndpointModal(props: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   api: WebhookAPI;
   token?: string;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }) {
+  const { isOpen, onClose, onSuccess, api, token, addToast } = props;
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState('');
   const [isPrimary, setIsPrimary] = useState(false);
@@ -711,6 +717,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
       onSuccess();
     } catch (error) {
       console.error('Failed to create endpoint:', error);
+      addToast('Failed to create endpoint. Please check the details and try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -783,19 +790,22 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
 }
 
 // Replay Modal Component
-function ReplayModal({ isOpen, onClose, api, endpoints, token }: {
+function ReplayModal(props: {
   isOpen: boolean;
   onClose: () => void;
   api: WebhookAPI;
   endpoints: Endpoint[];
   token?: string;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }) {
+  const { isOpen, onClose, api, endpoints, token, addToast } = props;
   const [replayType, setReplayType] = useState<'id' | 'dateRange'>('id');
   const [webhookId, setWebhookId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedEndpoint, setSelectedEndpoint] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  // const { addToast } = useToast(); // This was removed as ReplayModal should not call addToast directly
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -806,11 +816,11 @@ function ReplayModal({ isOpen, onClose, api, endpoints, token }: {
       } else {
         await api.replayWebhooksByDateRange(startDate, endDate, selectedEndpoint, token);
       }
-      alert(`Replay initiated successfully${selectedEndpoint ? ` to endpoint ${selectedEndpoint}` : ' to all endpoints'}`);
+      addToast(`Replay initiated successfully${selectedEndpoint ? ` to endpoint ${selectedEndpoint}` : ' to all endpoints'}`, 'success');
       onClose();
     } catch (error) {
       console.error('Failed to replay webhook:', error);
-      alert('Failed to replay webhook');
+      addToast('Failed to replay webhook. Please check the details and try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -960,7 +970,7 @@ function EndpointLogsModal({ isOpen, onClose, endpoint, logs, onReplay, endpoint
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">
-            Logs for {endpoint.id} : <pre className='inline'>{endpoint.url}</pre>
+            Logs for {endpoint.id} : <pre className='inline break-words'>{endpoint.url}</pre>
           </h3>
           <button
             onClick={onClose}
