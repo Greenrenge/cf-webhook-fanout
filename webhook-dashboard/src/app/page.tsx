@@ -687,7 +687,7 @@ export default function Dashboard() {
 }
 
 // Add Endpoint Modal Component
-function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
+function AddEndpointModal(props: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -695,6 +695,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
   token?: string;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }) {
+  const { isOpen, onClose, onSuccess, api, token, addToast } = props;
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState('');
   const [isPrimary, setIsPrimary] = useState(false);
@@ -789,7 +790,7 @@ function AddEndpointModal({ isOpen, onClose, onSuccess, api, token }: {
 }
 
 // Replay Modal Component
-function ReplayModal({ isOpen, onClose, api, endpoints, token }: {
+function ReplayModal(props: {
   isOpen: boolean;
   onClose: () => void;
   api: WebhookAPI;
@@ -797,6 +798,7 @@ function ReplayModal({ isOpen, onClose, api, endpoints, token }: {
   token?: string;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }) {
+  const { isOpen, onClose, api, endpoints, token, addToast } = props;
   const [replayType, setReplayType] = useState<'id' | 'dateRange'>('id');
   const [webhookId, setWebhookId] = useState('');
   const [startDate, setStartDate] = useState('');
