@@ -2,6 +2,9 @@ import NextAuth, { NextAuthConfig, User } from "next-auth"
 import Keycloak from "next-auth/providers/keycloak"
 import { JWT } from "next-auth/jwt"
 
+// This promise will be shared across invocations of the `jwt` callback
+let refreshTokenPromise: Promise<TokenWithRefresh> | null = null;
+
 interface TokenWithRefresh extends JWT {
   accessToken?: string
   accessTokenExpires?: number
@@ -75,8 +78,15 @@ export const authConfig: NextAuthConfig = {
         return token;
       }
 
-      // Access token has expired, try to update it
-      return refreshAccessToken(token as TokenWithRefresh);
+      // Access token has expired, try to update it.
+      // This is a "mutex" to prevent race conditions.
+      if (!refreshTokenPromise) {
+        refreshTokenPromise = refreshAccessToken(token as TokenWithRefresh).finally(() => {
+          refreshTokenPromise = null
+        })
+      }
+
+      return refreshTokenPromise
     },
     async session({ session, token }) {
       // Handle token refresh errors
