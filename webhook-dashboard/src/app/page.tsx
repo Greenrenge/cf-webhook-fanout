@@ -5,7 +5,7 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { Endpoint, WebhookLog, IncomingWebhook } from '@/types/webhook';
 import { WebhookAPI } from '@/lib/api';
 import { WebhookLogDetails } from '@/components/WebhookLogDetails';
-import { formatBangkokDate } from '@/lib/utils';
+import { formatBangkokTime } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 
 export default function Dashboard() {
@@ -383,7 +383,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
-                          {formatBangkokDate(endpoint.createdAt)}
+                          {formatBangkokTime(endpoint.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                           <button
@@ -490,7 +490,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatBangkokDate(webhook.createdAt)}
+                          {formatBangkokTime(webhook.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                           <button
@@ -1100,7 +1100,7 @@ function IncomingWebhookDetailsModal({ isOpen, onClose, webhook, onReplay, isRep
               Time
             </label>
             <div className="text-gray-900">
-              {formatBangkokDate(webhook.createdAt)}
+              {formatBangkokTime(webhook.createdAt)}
             </div>
           </div>
         </div>
