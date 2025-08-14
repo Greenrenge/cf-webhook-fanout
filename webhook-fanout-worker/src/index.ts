@@ -648,7 +648,7 @@ async function handleWebhook(c: any) {
 		}
 
 		// Fallback to 200 OK
-		return c.json({ message: 'Webhook processed successfully' }, 200);
+		return c.json(responseBody ?? {}, responseStatus || 404);
 	} catch (error) {
 		console.error('Webhook processing error:', error);
 
